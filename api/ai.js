@@ -44,8 +44,8 @@ function parseJSON(text) {
   return JSON.parse(text.slice(a, b + 1));
 }
 
-async function gemini(system, user, maxTokens) {
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`, {
+async function gemini(system, user, maxTokens, model = GEMINI_MODEL) {
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
     body: JSON.stringify({
@@ -55,7 +55,7 @@ async function gemini(system, user, maxTokens) {
     }),
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j?.error?.message || `Gemini API error ${r.status}`);
+  if (!r.ok) throw Object.assign(new Error(j?.error?.message || `Gemini API error ${r.status}`), { status: r.status });
   return parseJSON((j.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join(""));
 }
 
@@ -67,16 +67,39 @@ async function groq(system, user, maxTokens) {
       messages: [{ role: "system", content: system + "\nRespond with a single JSON object." }, { role: "user", content: user }] }),
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j?.error?.message || `Groq API error ${r.status}`);
+  if (!r.ok) throw Object.assign(new Error(j?.error?.message || `Groq API error ${r.status}`), { status: r.status });
   return parseJSON(j.choices?.[0]?.message?.content || "");
 }
 
+/** every text provider that has a key, the preferred one first */
+function textProviders() {
+  const first = textProvider();
+  if (!first) return [];
+  const all = ["gemini", "groq", "anthropic"].filter((k) => !!process.env[{ gemini: "GEMINI_API_KEY", groq: "GROQ_API_KEY", anthropic: "ANTHROPIC_API_KEY" }[k]]);
+  return [first, ...all.filter((k) => k !== first)];
+}
+/** "busy", "high demand", rate limits and server errors are worth trying elsewhere */
+const transient = (e) => (e?.status && (e.status === 429 || e.status >= 500)) || /high demand|overload|unavailable|try again|rate limit|quota|exhausted|timeout|busy|capacity/i.test(String(e?.message || e));
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function llm(system, user, maxTokens) {
-  const p = textProvider();
-  if (p === "gemini") return gemini(system, user, maxTokens);
-  if (p === "groq") return groq(system, user, maxTokens);
-  if (p === "anthropic") return claude(system, user, maxTokens);
-  throw new Error("No text AI key is set on the server (GEMINI_API_KEY, GROQ_API_KEY or ANTHROPIC_API_KEY).");
+  const list = textProviders();
+  if (!list.length) throw new Error("No text AI key is set on the server (GEMINI_API_KEY, GROQ_API_KEY or ANTHROPIC_API_KEY).");
+  const errors = [];
+  for (const p of list) {
+    const attempts = p === "gemini"
+      ? [() => gemini(system, user, maxTokens), () => gemini(system, user, maxTokens, process.env.GEMINI_FALLBACK_MODEL || "gemini-flash-lite-latest")]
+      : [() => (p === "groq" ? groq : claude)(system, user, maxTokens)];
+    for (let i = 0; i < attempts.length; i++) {
+      try { return await attempts[i](); }
+      catch (e) {
+        errors.push(`${LABEL[p]}: ${e?.message || e}`);
+        if (!transient(e)) { if (list.length === 1) throw e; break; }
+        if (list.length === 1 && i === attempts.length - 1) { await wait(2500); try { return await attempts[0](); } catch (e2) { throw e2; } }
+      }
+    }
+  }
+  throw new Error(errors.length > 1 ? `All AI services were busy — ${errors.join(" · ")}` : errors[0]);
 }
 
 const FRAMINGS = ["Extreme Wide Shot", "Wide Shot", "Medium Shot", "Close-Up", "Extreme Close-Up", "Over-the-Shoulder", "POV"];
@@ -94,7 +117,7 @@ async function claude(system, user, maxTokens = 4000) {
     body: JSON.stringify({ model: TEXT_MODEL, max_tokens: maxTokens, system, messages: [{ role: "user", content: user }] }),
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j?.error?.message || `Anthropic API error ${r.status}`);
+  if (!r.ok) throw Object.assign(new Error(j?.error?.message || `Anthropic API error ${r.status}`), { status: r.status });
   return parseJSON((j.content || []).filter((c) => c.type === "text").map((c) => c.text).join(""));
 }
 

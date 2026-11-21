@@ -84,7 +84,7 @@ Describe an idea and **Write My Film** produces the title, logline, a locked vis
 | `POLLINATIONS_API_KEY` (secret `sk_` key from enter.pollinations.ai) | needs Pollen credit | storyboard photos. Pollinations no longer serves images without a funded key (error 402) |
 | `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | paid | Claude for text / OpenAI for images |
 
-Optional: `GEMINI_MODEL` (default `gemini-flash-latest`), `GROQ_MODEL` (default `llama-3.3-70b-versatile`), `ANTHROPIC_MODEL`, `OPENAI_IMAGE_MODEL` (default `gpt-image-2.5-flare`), `TEXT_PROVIDER` / `IMAGE_PROVIDER` to pick between several keys, `CLOUDFLARE_IMAGE_MODEL` (default `@cf/black-forest-labs/flux-1-schnell`). With no image key, storyboard frames are drawn as sketches by the text AI. Free tiers have daily limits set by each provider.
+Optional: `GEMINI_MODEL` (default `gemini-flash-latest`), `GROQ_MODEL` (default `llama-3.3-70b-versatile`), `ANTHROPIC_MODEL`, `OPENAI_IMAGE_MODEL` (default `gpt-image-2.5-flare`), `TEXT_PROVIDER` / `IMAGE_PROVIDER` to pick between several keys, `CLOUDFLARE_IMAGE_MODEL` (default `@cf/black-forest-labs/flux-1-schnell`). With no image key, storyboard frames are drawn as sketches by the text AI. If the first text AI is busy ("high demand", rate limits), SceneCraft tries Gemini's lighter model (`GEMINI_FALLBACK_MODEL`, default `gemini-flash-lite-latest`) and then your other text keys automatically — so setting both Gemini and Groq is the most reliable free setup. Free tiers have daily limits set by each provider.
 Without a text key, AI buttons are replaced by an explanation and the rest of the app works fully. The provider calls are implemented but weren't tested against the live services during development.
 
 ## Run and deploy
