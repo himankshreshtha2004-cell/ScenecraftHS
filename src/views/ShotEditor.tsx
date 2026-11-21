@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  ArrowLeft, ArrowRightLeft, Check, CheckCircle2, ChevronLeft, ChevronRight, CircleAlert, Copy, Download, FileText, Grid3x3, History, Images, Link2,
+  ArrowLeft, ArrowRightLeft, Camera, Check, CheckCircle2, ChevronLeft, ChevronRight, CircleAlert, Copy, Download, FileText, Grid3x3, History, Images, Link2,
   Loader2, PenTool, RotateCcw, Save, Sparkles, Star, Trash2, Upload, Wand2, X,
 } from "lucide-react";
 import { useState } from "react";
@@ -132,7 +132,7 @@ function PreviewTab({ p, s }: { p: Project; s: Shot }) {
         <FileButton size="sm" multiple icon={<Upload className="h-4 w-4" />} onFiles={(f) => attachImage(s.id, f)}>Upload version</FileButton>
         <Button size="sm" tone="subtle" icon={<Images className="h-4 w-4" />} onClick={() => setLib(true)}>From library</Button>
         {ai.image && <Button size="sm" tone="ai" disabled={gen || job.running} icon={gen ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} onClick={generate}>{gen ? "Generating…" : `Photo with ${ai.imageProvider || "AI"}`}</Button>}
-        {ai.text && <Button size="sm" tone="ai" disabled={job.running} icon={job.running ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenTool className="h-4 w-4" />} onClick={() => makeFrames("sketch", [s.id])}>{job.running ? "Drawing…" : "Draw a sketch"}</Button>}
+        {ai.image && <Button size="sm" tone="ai" disabled={job.running} icon={job.running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />} onClick={() => makeFrames("photo", [s.id])}>{job.running ? "Making…" : "Make a photo frame"}</Button>}
         {!ai.image && !ai.text && <button className="text-[12.5px] text-ai hover:underline" onClick={() => st.setOverlay("settings")}>Connect AI to make frames</button>}
       </div>
 

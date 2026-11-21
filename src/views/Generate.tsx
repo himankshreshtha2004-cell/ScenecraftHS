@@ -108,7 +108,7 @@ export default function Generate() {
                     <div className="flex gap-2 mt-3 flex-wrap">
                       <Button size="sm" icon={<Copy className="h-4 w-4" />} onClick={async () => { await copyText(buildImagePrompt(p, s)); st.toast("Image prompt copied.", "ok"); }}>Copy image prompt</Button>
                       <FileButton size="sm" icon={<Upload className="h-4 w-4" />} onFiles={(f) => attachImage(s.id, f, "start")}>Upload the frame</FileButton>
-                      {ai.text && <Button size="sm" tone="ai" icon={<Wand2 className="h-4 w-4" />} onClick={() => makeFrames("sketch", [s.id])}>Draw a sketch</Button>}
+                      {ai.image && <Button size="sm" tone="ai" icon={<Wand2 className="h-4 w-4" />} onClick={() => makeFrames("photo", [s.id])}>Make a photo frame</Button>}
                       {ai.image && <Button size="sm" tone="ai" disabled={gen} icon={gen ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} onClick={genStart}>{gen ? "Generating…" : "Generate it"}</Button>}
                     </div>
                   </div>

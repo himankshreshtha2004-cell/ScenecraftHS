@@ -137,7 +137,7 @@ ${LISTS}
 Never remove or alter these locked details: ${input.locked.join("; ") || "none"}. Keep every character's appearance, wardrobe text and any dialogue lines exactly as written unless the request asks to change the dialogue.`,
     `Current prompt:\n${input.prompt}\n\nShot settings: ${JSON.stringify(input.shot)}\n\nRequested change: ${input.request}`, { tier: "default" });
 
-export async function generateImage(input: { prompt: string; aspect: string }) {
+export async function generateImage(input: { prompt: string; aspect: string; refs?: { b64: string; mime: string }[] }) {
   const r = await fetch(base(), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ task: "image", ...input }) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || j.error) throw new Error(j.error || `The image service answered ${r.status}.`);

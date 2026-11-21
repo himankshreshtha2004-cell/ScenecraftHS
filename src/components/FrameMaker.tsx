@@ -5,7 +5,7 @@ import type { Project } from "../lib/types";
 import { useStore } from "../store/store";
 import { Button, Menu, Progress } from "./ui";
 
-/** "Make storyboard frames" — fills every empty shot with a photo or a drawn sketch */
+/** "Make storyboard frames" — fills every empty shot with a photo (or redoes old sketches as photos) */
 export function MakeFramesButton({ p, size = "md" }: { p: Project; size?: "sm" | "md" }) {
   useStore((s) => s.ai);
   const job = useFrameJob();
@@ -13,7 +13,7 @@ export function MakeFramesButton({ p, size = "md" }: { p: Project; size?: "sm" |
   const missing = p.shots.filter((s) => !s.imageId).length;
   const st = useStore.getState();
   if (job.running) return <Button size={size} tone="ai" disabled icon={<Loader2 className="h-4 w-4 animate-spin" />}>Making frames {job.done}/{job.total}</Button>;
-  if (!modes.length) return <Menu trigger={(_, t) => <Button size={size} tone="ai" icon={<Wand2 className="h-4 w-4" />} onClick={t}>Make frames</Button>} items={[...handItems(p), "sep" as const, { label: "Connect AI to make frames here…", icon: <Wand2 className="h-4 w-4" />, onClick: () => st.setOverlay("settings") }]} />;
+  if (!modes.length) return <Menu trigger={(_, t) => <Button size={size} tone="ai" icon={<Wand2 className="h-4 w-4" />} onClick={t}>Make frames</Button>} items={[...handItems(p), "sep" as const, { label: "Turn on free photo frames (Cloudflare keys)…", icon: <Camera className="h-4 w-4" />, onClick: () => st.setOverlay("settings") }]} />;
   const items = (all: boolean) => modes.map((m: FrameMode) => ({
     label: `${all ? "Redo all as" : "Make"} ${modeLabel(m)}`, icon: m === "photo" ? <Camera className="h-4 w-4" /> : <PenTool className="h-4 w-4" />,
     onClick: () => makeFrames(m, all ? p.shots.map((s) => s.id) : undefined),

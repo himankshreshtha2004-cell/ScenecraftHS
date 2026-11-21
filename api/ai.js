@@ -10,11 +10,12 @@
 // IMAGES (storyboard image generation) — the first one that is set is used:
 //   OPENAI_API_KEY      paid, separate from a ChatGPT subscription (OPENAI_IMAGE_MODEL, default gpt-image-2.5-flare)
 //   CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN
-//                       FREE: Cloudflare Workers AI, FLUX.1 schnell — 10,000 free "neurons" a day (~150 frames)
-//                       (CLOUDFLARE_IMAGE_MODEL, default @cf/black-forest-labs/flux-1-schnell)
+//                       FREE: Cloudflare Workers AI, FLUX.2 [klein] — 10,000 free "neurons" a day (~90 photoreal frames)
+//                       (CLOUDFLARE_IMAGE_MODEL, default @cf/black-forest-labs/flux-2-klein-4b; also works with
+//                        flux-2-klein-9b / flux-2-dev (sharper, far fewer free frames), flux-1-schnell, @cf/leonardo/lucid-origin)
 //   POLLINATIONS_API_KEY Pollinations (gen.pollinations.ai) — now needs a key with Pollen credit on it.
 //   IMAGE_PROVIDER      optional: "openai" | "cloudflare" | "pollinations" to force one
-// With none of these set, the storyboard falls back to AI-drawn sketches (needs a text key).
+// With none of these set, SceneCraft does not make frames itself: use "Copy image prompts" and upload the results.
 
 const TEXT_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
 const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.5-flare";
@@ -31,14 +32,14 @@ function textProvider() {
 }
 const CF_ACCOUNT = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID || "";
 const CF_TOKEN = process.env.CLOUDFLARE_API_TOKEN || process.env.CF_API_TOKEN || "";
-const CF_MODEL = process.env.CLOUDFLARE_IMAGE_MODEL || "@cf/black-forest-labs/flux-1-schnell";
+const CF_MODEL = process.env.CLOUDFLARE_IMAGE_MODEL || "@cf/black-forest-labs/flux-2-klein-4b";
 function imageProvider() {
   const has = { openai: !!process.env.OPENAI_API_KEY, cloudflare: !!(CF_ACCOUNT && CF_TOKEN), pollinations: !!process.env.POLLINATIONS_API_KEY && (process.env.POLLINATIONS || "").toLowerCase() !== "off" };
   const forced = (process.env.IMAGE_PROVIDER || "").toLowerCase();
   if (forced && has[forced]) return forced;
   return has.openai ? "openai" : has.cloudflare ? "cloudflare" : has.pollinations ? "pollinations" : null;
 }
-const LABEL = { gemini: "Gemini (free tier)", groq: "Groq (free tier)", anthropic: "Claude", openai: "OpenAI", cloudflare: "Cloudflare FLUX (free)", pollinations: "Pollinations" };
+const LABEL = { gemini: "Gemini (free tier)", groq: "Groq (free tier)", anthropic: "Claude", openai: "OpenAI", cloudflare: /flux-2/.test(CF_MODEL) ? "Cloudflare FLUX.2 (free)" : "Cloudflare (free)", pollinations: "Pollinations" };
 
 function parseJSON(text) {
   const a = text.indexOf("{"), b = text.lastIndexOf("}");
@@ -167,24 +168,47 @@ Never remove or alter these locked details: ${(body.locked || []).map((x) => cut
 
 const SIZES = (aspect) => aspect === "9:16" ? [768, 1344] : aspect === "1:1" ? [1024, 1024] : aspect === "2.39:1" ? [1536, 640] : [1344, 768];
 
+/** long side 1024 (keeps the free allowance at ~90 frames a day), short side to the film's aspect, multiples of 16 */
+function cfSize(aspect) {
+  const [a, b] = String(aspect || "16:9").split(":").map(Number);
+  const r = a && b ? a / b : 16 / 9, r16 = (n) => Math.max(256, Math.round(n / 16) * 16);
+  return r >= 1 ? [1024, r16(1024 / r)] : [r16(1024 * r), 1024];
+}
 async function cloudflare(body) {
+  const [width, height] = cfSize(body.aspect);
+  const seed = Math.floor(Math.random() * 1e6);
+  const prompt = cut(body.prompt, 2000);
+  let init;
+  if (/flux-2/.test(CF_MODEL)) {
+    // FLUX.2 takes multipart form data; character photos go in as reference images (input_image_0..3)
+    const form = new FormData();
+    form.append("prompt", prompt);
+    // FLUX.2 [klein] accepts only prompt, width, height and input_image_0..3 (no seed, no steps)
+    form.append("width", String(width)); form.append("height", String(height));
+    (Array.isArray(body.refs) ? body.refs : []).slice(0, 4).forEach((r, i) => {
+      if (r && typeof r.b64 === "string" && r.b64.length < 600000) form.append(`input_image_${i}`, new Blob([Buffer.from(r.b64, "base64")], { type: r.mime || "image/jpeg" }), `ref${i}.jpg`);
+    });
+    init = { body: form };
+  } else if (/flux-1/.test(CF_MODEL)) {
+    init = { headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt, steps: 8, seed }) };
+  } else {
+    init = { headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt, width, height, num_steps: 25, seed }) };
+  }
   const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(CF_ACCOUNT)}/ai/run/${CF_MODEL}`, {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${CF_TOKEN}` },
-    body: JSON.stringify({ prompt: cut(`${body.prompt} Wide ${body.aspect || "16:9"} cinematic composition.`, 2000), steps: 6, seed: Math.floor(Math.random() * 1e6) }),
+    method: "POST", ...init, headers: { ...(init.headers || {}), authorization: `Bearer ${CF_TOKEN}` },
   });
   const type = r.headers.get("content-type") || "";
-  if (type.startsWith("image/")) return { b64: Buffer.from(await r.arrayBuffer()).toString("base64"), mime: type.split(";")[0] };
+  if (r.ok && type.startsWith("image/")) return { b64: Buffer.from(await r.arrayBuffer()).toString("base64"), mime: type.split(";")[0] };
   const j = await r.json().catch(() => ({}));
   if (!r.ok || j.success === false) {
     const msg = j?.errors?.[0]?.message || `Cloudflare error ${r.status}`;
-    if (r.status === 429 || /neuron|daily|limit/i.test(msg)) throw new Error("Today's free Cloudflare image allowance is used up — it resets at 05:30 India time (00:00 UTC).");
+    if (r.status === 429 || /neuron|daily|limit|quota/i.test(msg)) throw new Error("Today's free Cloudflare image allowance is used up — it resets at 05:30 India time (00:00 UTC).");
     if (r.status === 401 || r.status === 403) throw new Error("Cloudflare rejected the key — check CLOUDFLARE_ACCOUNT_ID and that CLOUDFLARE_API_TOKEN has Workers AI permission.");
-    throw new Error(msg);
+    throw new Error(`Cloudflare: ${msg}`);
   }
-  const b64 = j?.result?.image;
+  const b64 = j?.result?.image ?? j?.image;
   if (!b64) throw new Error("Cloudflare didn't return an image.");
-  return { b64, mime: "image/jpeg" };
+  return { b64, mime: b64.startsWith("iVBOR") ? "image/png" : "image/jpeg" };
 }
 
 async function pollinations(body) {

@@ -136,7 +136,7 @@ export function buildImagePrompt(p: Project, s: Shot): string {
   const chars = shotCharacters(p, s);
   const { l, v } = shotLocation(p, s);
   return join([
-    sentence(`Storyboard frame, ${p.aspect}, ${phrase(FRAMINGS, s.framing)}: ${clean(s.description || s.title)}`),
+    sentence(`Cinematic film still, ${p.aspect}, ${phrase(FRAMINGS, s.framing)}: ${clean(s.description || s.title)}`),
     ...chars.map(({ c, w }) => characterSentence(c, w)),
     l ? locationSentence(l, v, s.architectureOverride) : "",
     sentence(`${cap(s.timeOfDay.toLowerCase())}, ${phrase(LIGHTINGS, s.lighting)}, ${s.mood.toLowerCase()} mood`),
