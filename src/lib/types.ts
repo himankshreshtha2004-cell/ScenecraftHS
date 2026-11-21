@@ -90,6 +90,17 @@ export interface ShotCharacter {
   wardrobeId: string;
 }
 
+export interface DialogueLine {
+  id: string;
+  /** a character id, or a free name such as "Narrator" or "Voice on the phone" */
+  speaker: string;
+  line: string;
+  /** how it's said — whispering, over the phone, V.O. (voice-over)… */
+  delivery: string;
+}
+
+export type PromptTarget = "higgsfield" | "sora" | "generic";
+
 export interface Shot {
   id: string;
   sceneId: string;
@@ -120,6 +131,14 @@ export interface Shot {
   /** the editable video prompt; null = follow the structured prompt automatically */
   promptText: string | null;
   promptVersions: PromptVersion[];
+  /** spoken lines in this shot */
+  dialogue: DialogueLine[];
+  /** sound effects and music cues */
+  sound: string;
+  /** ticked in Generate once the clip has been made in the video tool */
+  generated: boolean;
+  /** optional link to the generated clip */
+  resultUrl: string;
   status: ShotStatus;
   notes: string;
   /** continuity warnings the user marked as intentional */
@@ -144,10 +163,11 @@ export interface ProjectUI {
   boardMode: "storyboard" | "timeline";
   selectedCharacterId: string | null;
   selectedLocationId: string | null;
+  promptTarget?: PromptTarget;
 }
 
 export type View =
-  | "studio" | "projects" | "story" | "storyboard" | "shot" | "characters" | "locations" | "prompts" | "credits" | "export";
+  | "studio" | "projects" | "story" | "script" | "storyboard" | "shot" | "characters" | "locations" | "prompts" | "generate" | "credits" | "export";
 
 export interface Project {
   id: string;

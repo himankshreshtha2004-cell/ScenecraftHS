@@ -63,7 +63,16 @@ Each issue offers a one-click fix or "keep as intentional". Shots show Ready, Ne
 **Sample project — Midnight Echo**
 A six-shot neo-noir plan with locked characters, locations and style, plus one deliberate wardrobe conflict. Its pictures are **SVG sample illustrations**, labelled as such everywhere. They are not generated film stills.
 
-## Optional AI (free options included)
+## AI writing — scenes, dialogue and prompts
+
+Describe an idea and **Write My Film** produces the title, logline, a locked visual style, characters with fixed looks, locations, scenes and shots — each with action, camera, lighting, motion, **dialogue** and sound. The **Script** view reads like a screenplay; **Write next scene** continues the story and **Write dialogue** fills one shot. **Generate** walks through the film one shot at a time with the start frame, a prompt formatted for **Higgsfield** or **OpenAI Sora** (dialogue included), and a checkbox to track which clips are done.
+
+- **Number of shots:** pick Auto or an exact number (4, 6, 8, 10, 12 or any number up to 40); the AI writes exactly that many.
+- **Storyboard frames for every shot:** after the film is written, SceneCraft makes a frame for each shot automatically (or press **Make storyboard frames**). On Vercel these are **photos** from the free Pollinations image service; inside Claude they are **storyboard sketches** that Claude draws as SVG (labelled "AI sketch"; model SVG is sanitised before display).
+- **Inside Claude** (the published claude.ai page): Claude writes everything — no key needed; Claude asks permission the first time.
+- **On Vercel**: add a free Gemini or Groq key (below).
+
+## Optional AI on Vercel (free options included)
 
 `api/ai.js` is a Vercel serverless function. Add keys in **Vercel → Project → Settings → Environment Variables**, then redeploy. Keys stay on the server; the browser only learns which features are on.
 

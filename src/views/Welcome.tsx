@@ -46,7 +46,7 @@ export default function Welcome() {
             <div className="text-[12px] font-semibold uppercase tracking-[.24em] text-amber mb-6">AI film pre-production studio</div>
             <h1 className="font-serif text-[clamp(56px,7.4vw,112px)] leading-[.92] tracking-[-.02em]">SceneCraft</h1>
             <p className="font-serif italic text-[clamp(24px,2.4vw,34px)] text-ink/85 mt-5 leading-tight">Your next great film begins<br />before the first frame.</p>
-            <p className="text-[15.5px] text-mute mt-6 max-w-[480px] leading-relaxed">Plan every shot, lock your characters and locations, build precise prompts and estimate credits — then take a finished production kit to Higgsfield or any AI video tool.</p>
+            <p className="text-[15.5px] text-mute mt-6 max-w-[480px] leading-relaxed">Describe an idea. SceneCraft writes the scenes and dialogue, plans every shot with consistent characters and places, and hands you ready-to-paste prompts for Higgsfield or Sora — one shot at a time.</p>
           </motion.div>
           <motion.div className="flex flex-wrap items-center gap-3 mt-10" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25, duration: 0.6 }}>
             <Button tone="primary" size="lg" onClick={() => st.setScreen("new")}>Start a New Film<ArrowRight className="h-4 w-4" /></Button>

@@ -7,6 +7,7 @@ import { deleteShot, updateShot } from "../lib/ops";
 import { promptOf } from "../lib/prompt";
 import type { Project, Shot } from "../lib/types";
 import { useStore } from "../store/store";
+import { DialogueEditor } from "./Dialogue";
 import { Button, Collapsible, confirmDialog, cx, Field, IconButton, Input, Pill, Progress, Segmented, Select, TextArea } from "./ui";
 
 export function StatusPill({ status }: { status: Shot["status"] }) {
@@ -125,6 +126,10 @@ export default function ShotInspector({ shot, onClose, inEditor }: { shot: Shot;
             </Field>
           )}
           {!p.locations.length && <button onClick={() => st.go("locations")} className="text-[13px] text-amber hover:underline inline-flex items-center gap-1"><Plus className="h-3.5 w-3.5" />Create a location</button>}
+        </Collapsible>
+
+        <Collapsible title={`Dialogue & sound${shot.dialogue.length ? ` · ${shot.dialogue.length}` : ""}`}>
+          <DialogueEditor p={p} s={shot} />
         </Collapsible>
 
         <Collapsible title="Motion" defaultOpen={inEditor}>

@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertTriangle, BookOpen, Check, ChevronDown, CircleDollarSign, Clapperboard, CloudOff, Download, FolderOpen, Home, Keyboard, Loader2, MapPin,
-  PanelLeftClose, PanelLeftOpen, Play, Plus, Redo2, Settings, Sparkles, Undo2, Users, X,
+  PanelLeftClose, PanelLeftOpen, Play, Plus, Redo2, ScrollText, Settings, Sparkles, Undo2, Users, Wand2, X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { continuityStatus, projectIssues } from "../lib/checks";
@@ -85,10 +85,12 @@ const NAV: { v: View; label: string; icon: any; project?: boolean }[] = [
   { v: "studio", label: "My Studio", icon: Home },
   { v: "projects", label: "Projects", icon: FolderOpen },
   { v: "story", label: "Story", icon: BookOpen, project: true },
+  { v: "script", label: "Script", icon: ScrollText, project: true },
   { v: "storyboard", label: "Storyboard", icon: Clapperboard, project: true },
   { v: "characters", label: "Characters", icon: Users, project: true },
   { v: "locations", label: "Locations", icon: MapPin, project: true },
   { v: "prompts", label: "Prompt Studio", icon: Sparkles, project: true },
+  { v: "generate", label: "Generate", icon: Wand2, project: true },
   { v: "credits", label: "Credit Planner", icon: CircleDollarSign, project: true },
   { v: "export", label: "Export", icon: Download, project: true },
 ];
@@ -134,6 +136,7 @@ export function Sidebar() {
                 <Icon className={cx("h-[18px] w-[18px] shrink-0", on && "text-amber")} />
                 {open && <span className="flex-1 text-left truncate">{n.label}</span>}
                 {open && n.v === "storyboard" && p && <span className="text-[11.5px] text-faint">{p.shots.length}</span>}
+                {open && n.v === "generate" && p && p.shots.length > 0 && <span className="text-[11.5px] text-faint tabular-nums">{p.shots.filter((s) => s.generated).length}/{p.shots.length}</span>}
                 {n.v === "prompts" && p && cs !== "ready" && (
                   <span className={cx("grid place-items-center rounded-full text-[10.5px] font-bold", open ? "h-5 min-w-5 px-1.5" : "absolute top-1 right-1 h-4 min-w-4 px-1", cs === "conflict" ? "bg-bad text-[#2a0f0d]" : "bg-warn text-[#2a2208]")} title={`${issues.length} continuity ${issues.length === 1 ? "issue" : "issues"}`}>{issues.length}</span>
                 )}

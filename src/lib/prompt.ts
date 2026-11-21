@@ -91,6 +91,23 @@ function opening(p: Project, s: Shot) {
   return join([sentence(`${look} ${phrase(FRAMINGS, s.framing)}`), sentence(d)]);
 }
 
+export function speakerName(p: Project, id: string) {
+  return p.characters.find((c) => c.id === id)?.name ?? id;
+}
+const isVO = (d: string) => /\b(v\.?o\.?|voice-?over)\b/i.test(d);
+export function dialogueLines(p: Project, s: Shot) {
+  return s.dialogue.filter((d) => d.line.trim()).map((d) => {
+    const who = speakerName(p, d.speaker) || "Someone";
+    const how = d.delivery.trim();
+    return { who, how, line: d.line.trim().replace(/^["“]|["”]$/g, ""), vo: isVO(how) };
+  });
+}
+function dialogueSentence(p: Project, s: Shot) {
+  const ls = dialogueLines(p, s);
+  if (!ls.length) return "";
+  return "Dialogue: " + ls.map((d) => `${d.who}${d.how ? ` (${d.how})` : ""}: "${d.line}"`).join(" ") + (ls.some((d) => !d.vo) ? " Lip movements match the spoken lines." : "");
+}
+
 /** The structured video-generation prompt, assembled from the shot's production data. */
 export function buildVideoPrompt(p: Project, s: Shot): string {
   const st = effectiveStyle(p, s);
@@ -105,6 +122,8 @@ export function buildVideoPrompt(p: Project, s: Shot): string {
     phrase(MOVEMENTS, s.movement),
     s.motion.trim() && sentence(`Motion: ${s.motion}`),
     s.mood && sentence(`${s.mood} mood`),
+    dialogueSentence(p, s),
+    s.sound.trim() && sentence(`Sound: ${s.sound}`),
     styleSentence(st, p.filmStyle),
     continuity(p, s),
     sentence(`Duration about ${s.duration} seconds, ${p.aspect} aspect ratio`),
@@ -146,4 +165,53 @@ export function diffWords(a: string, b: string): { t: string; k: "same" | "add" 
   while (i < n) push(A[i++], "del");
   while (j < m) push(B[j++], "add");
   return out;
+}
+
+/* ------------------------------------------------------------------ per-tool prompt formats */
+export const TARGETS: { value: "higgsfield" | "sora" | "generic"; label: string; hint: string; url: string }[] = [
+  { value: "higgsfield", label: "Higgsfield", hint: "One compact paragraph — paste into the video prompt box with your start frame.", url: "https://higgsfield.ai" },
+  { value: "sora", label: "OpenAI Sora", hint: "Structured lines with separate camera, action and dialogue — Sora follows these closely.", url: "https://sora.chatgpt.com" },
+  { value: "generic", label: "Full prompt", hint: "The complete SceneCraft prompt (including your hand edits) for any other tool.", url: "" },
+];
+
+function charShort(c: Character, w?: { clothes: string }) {
+  return [c.name + (c.description ? `, ${clean(c.description)}` : ""), c.hair && clean(c.hair), w?.clothes && `wearing ${clean(w.clothes)}`].filter(Boolean).join(", ");
+}
+
+export function formatPrompt(p: Project, s: Shot, target: "higgsfield" | "sora" | "generic"): string {
+  if (target === "generic") return promptOf(p, s);
+  const st = effectiveStyle(p, s);
+  const chars = shotCharacters(p, s);
+  const { l, v } = shotLocation(p, s);
+  const look = p.style.locked ? `${clean(st.visualStyle)}` : p.filmStyle.toLowerCase();
+  const light = `${s.timeOfDay.toLowerCase()}, ${phrase(LIGHTINGS, s.lighting)}`;
+  const dl = dialogueLines(p, s);
+  if (target === "higgsfield") {
+    return join([
+      opening(p, s),
+      ...chars.map(({ c, w }) => sentence(charShort(c, w))),
+      l && sentence(`Setting: ${l.name}, ${clean(l.description)}${v ? `, ${[v.weather, v.lighting].filter(Boolean).map(clean).join(", ")}` : ""}`),
+      sentence(cap(light)),
+      phrase(MOVEMENTS, s.movement),
+      s.motion.trim() && sentence(s.motion),
+      ...dl.map((d) => `${d.who}${d.vo ? " (voice-over)" : d.how ? ` (${clean(d.how)})` : ""} says: "${d.line}"`),
+      s.sound.trim() && sentence(`Sound: ${s.sound}`),
+      sentence(`${cap(look)}${p.style.locked && st.palette ? `, ${clean(st.palette)}` : ""}, ${s.mood.toLowerCase()} mood`),
+    ]);
+  }
+  // Sora: labelled sections
+  const L: string[] = [];
+  L.push(`${cap(look)} ${phrase(FRAMINGS, s.framing)}. ${s.description.trim() ? sentence(s.description) : s.title}`);
+  if (chars.length) L.push("", "Characters:", ...chars.map(({ c, w }) => `- ${charShort(c, w)}${c.locked && c.face ? `; ${clean(c.face)}` : ""}`));
+  if (l) L.push("", `Setting: ${l.name} — ${clean(l.description)}${l.locked && l.architecture ? `; ${clean(s.architectureOverride || l.architecture)}` : ""}.${v ? ` ${cap([v.weather, v.lighting].filter(Boolean).map(clean).join(", "))}.` : ""}`);
+  L.push(`Time and light: ${cap(light)}.`);
+  L.push("", `Camera: ${s.framing}. ${phrase(MOVEMENTS, s.movement)}`);
+  if (s.motion.trim()) L.push(`Action: ${sentence(s.motion)}`);
+  if (dl.length) L.push("", "Dialogue:", ...dl.map((d) => `${d.who}${d.vo ? " (V.O.)" : d.how ? ` (${clean(d.how)})` : ""}: "${d.line}"`));
+  if (s.sound.trim()) L.push("", `Sound: ${sentence(s.sound)}`);
+  L.push("", `Look: ${cap(look)}${p.style.locked ? [st.palette, st.cameraLanguage, st.atmosphere].filter(Boolean).map((x) => `; ${clean(x)}`).join("") : ""}. ${s.mood} mood.`);
+  const keep = continuity(p, s);
+  if (keep) L.push(keep);
+  L.push(`Length: about ${s.duration} seconds. Aspect ratio ${p.aspect}.`);
+  return L.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }

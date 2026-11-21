@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, ArrowRightLeft, Check, CheckCircle2, ChevronLeft, ChevronRight, CircleAlert, Copy, Download, FileText, Grid3x3, History, Images, Link2,
-  Loader2, RotateCcw, Save, Sparkles, Star, Trash2, Upload, Wand2, X,
+  Loader2, PenTool, RotateCcw, Save, Sparkles, Star, Trash2, Upload, Wand2, X,
 } from "lucide-react";
 import { useState } from "react";
 import { create } from "zustand";
@@ -9,6 +9,7 @@ import { LibraryPicker } from "../components/Library";
 import ShotInspector, { StatusPill } from "../components/ShotInspector";
 import { AssetImg, Button, Card, cx, DropSlot, Field, FileButton, IconButton, Input, Pill, Progress, Segmented, Select, TextArea } from "../components/ui";
 import { assistPrompt, generateImage, type PromptSuggestion } from "../lib/ai";
+import { makeFrames, useFrameJob } from "../lib/frames";
 import { costPerAttempt, readiness, shotIssues, type Issue } from "../lib/checks";
 import { copyText, download } from "../lib/download";
 import { ago, pad, slug } from "../lib/ids";
@@ -82,6 +83,7 @@ function PreviewTab({ p, s }: { p: Project; s: Shot }) {
   const [lib, setLib] = useState(false);
   const [compare, setCompare] = useState<[string, string] | null>(null);
   const [gen, setGen] = useState(false);
+  const job = useFrameJob();
   const imgPrompt = buildImagePrompt(p, s);
   const pickVersion = (id: string) => updateShot(s.id, (x) => { x.imageId = id; });
   const removeVersion = (id: string) => updateShot(s.id, (x) => { x.imageIds = x.imageIds.filter((y) => y !== id); if (x.imageId === id) x.imageId = x.imageIds[x.imageIds.length - 1] ?? null; });
@@ -129,9 +131,9 @@ function PreviewTab({ p, s }: { p: Project; s: Shot }) {
         {s.imageIds.length >= 2 && <Button size="sm" tone="subtle" icon={<ArrowRightLeft className="h-4 w-4" />} onClick={() => setCompare([s.imageIds[0], s.imageIds[1]])}>Compare</Button>}
         <FileButton size="sm" multiple icon={<Upload className="h-4 w-4" />} onFiles={(f) => attachImage(s.id, f)}>Upload version</FileButton>
         <Button size="sm" tone="subtle" icon={<Images className="h-4 w-4" />} onClick={() => setLib(true)}>From library</Button>
-        {ai.image
-          ? <Button size="sm" tone="ai" disabled={gen} icon={gen ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} onClick={generate}>{gen ? "Generating…" : `Generate with ${ai.imageProvider || "AI"}`}</Button>
-          : <button className="text-[12.5px] text-ai hover:underline" onClick={() => st.setOverlay("settings")}>Connect an image generator</button>}
+        {ai.image && <Button size="sm" tone="ai" disabled={gen || job.running} icon={gen ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} onClick={generate}>{gen ? "Generating…" : `Photo with ${ai.imageProvider || "AI"}`}</Button>}
+        {ai.text && <Button size="sm" tone="ai" disabled={job.running} icon={job.running ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenTool className="h-4 w-4" />} onClick={() => makeFrames("sketch", [s.id])}>{job.running ? "Drawing…" : "Draw a sketch"}</Button>}
+        {!ai.image && !ai.text && <button className="text-[12.5px] text-ai hover:underline" onClick={() => st.setOverlay("settings")}>Connect AI to make frames</button>}
       </div>
 
       <Card className="mt-6 p-5">

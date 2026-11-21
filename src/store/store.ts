@@ -4,7 +4,7 @@ import { blobOf, loadAssetsFor, prepareImage, storeBlob } from "../lib/assets";
 import { projectReadiness, totalDuration } from "../lib/checks";
 import { db, deleteAssets, deleteProjectData, loadProject, loadProjects, putAsset, saveProject } from "../lib/db";
 import { uid } from "../lib/ids";
-import { createSampleProject, emptyProject } from "../lib/sample";
+import { createSampleProject, emptyProject, normalizeProject } from "../lib/sample";
 import type { Asset, Project, ProjectMeta, ProjectUI, View } from "../lib/types";
 
 export type Screen = "welcome" | "new" | "app";
@@ -107,8 +107,9 @@ export const useStore = create<State>((set, get) => ({
 
   async openProject(id, view) {
     await get().saveNow();
-    const p = await loadProject(id);
-    if (!p) { get().toast("That project couldn't be found.", "error"); return; }
+    const raw = await loadProject(id);
+    if (!raw) { get().toast("That project couldn't be found.", "error"); return; }
+    const p = normalizeProject(raw);
     await loadAssetsFor(id);
     ls.set(LAST_KEY, id);
     const v = view ?? (p.ui.view === "studio" || p.ui.view === "projects" ? "storyboard" : p.ui.view);

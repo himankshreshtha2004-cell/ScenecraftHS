@@ -37,8 +37,9 @@ export default function Export() {
   };
   const one = async (label: string, fn: () => Promise<[Blob, string]>) => { setBusy(label); try { const [b, n] = await fn(); await download(b, n); } catch (e: any) { st.toast(`Export failed: ${e?.message || e}`, "error"); } finally { setBusy(null); } };
   const items: [keyof KitOptions, string, string][] = [
+    ["script", "Script with dialogue", `${p.scenes.length} scenes, ${p.shots.reduce((a, s) => a + s.dialogue.length, 0)} lines, as SCRIPT.md`],
     ["images", "Storyboard images", `${shots.filter((s) => s.imageId).length} images, named by scene and shot`],
-    ["prompts", "Video generation prompts", `${shots.length} prompt files, one per shot`],
+    ["prompts", "Video generation prompts", `${shots.length} files — Higgsfield, Sora and full versions`],
     ["characters", "Character references", `${p.characters.length} characters with specs and images`],
     ["locations", "Location references", `${p.locations.length} locations with descriptions and images`],
     ["frames", "Start and end frames", `${shots.filter((s) => s.startFrameId || s.endFrameId).length} shots with planned frames`],

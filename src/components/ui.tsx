@@ -180,7 +180,7 @@ export function AssetImg({ id, assets, aspect, className, fit = "cover", label =
         </>
       ) : id ? <div className="absolute inset-0 skeleton" /> : null}
       {label && a?.origin === "sample" && <span className="absolute left-2 bottom-2 rounded-md bg-black/55 backdrop-blur px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/75">Sample illustration</span>}
-      {label && a?.origin === "generated" && <span className="absolute left-2 bottom-2 rounded-md bg-ai/30 backdrop-blur px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/90">AI image</span>}
+      {label && a?.origin === "generated" && <span className="absolute left-2 bottom-2 rounded-md bg-ai/30 backdrop-blur px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/90">{a.tags.includes("sketch") ? "AI sketch" : "AI photo"}</span>}
       {children}
     </div>
   );

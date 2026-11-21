@@ -78,7 +78,7 @@ export function Studio() {
           <button onClick={() => st.setScreen("new")} className="group flex-1 text-left rounded-2xl border border-amber/30 bg-[linear-gradient(135deg,rgba(232,175,121,.14),rgba(232,175,121,.03))] p-6 hover:border-amber/60 transition-colors">
             <Plus className="h-6 w-6 text-amber" />
             <div className="font-serif text-[30px] mt-4 leading-none">Start a new film</div>
-            <p className="text-sm text-mute mt-2 max-w-sm">Describe your idea, choose a genre, length and look — SceneCraft sets up the storyboard.</p>
+            <p className="text-sm text-mute mt-2 max-w-sm">Describe your idea — SceneCraft writes the scenes, dialogue and shot-by-shot prompts.</p>
             <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber mt-4">Begin <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
           </button>
           {!hasSample && (
@@ -92,7 +92,7 @@ export function Studio() {
             <Card className="p-5">
               <div className="text-sm font-semibold">How SceneCraft works</div>
               <ol className="mt-2 space-y-1 text-[13px] text-mute list-decimal list-inside">
-                <li>Plan the story and shots</li><li>Lock characters, places and style</li><li>Refine prompts and fix continuity</li><li>Estimate credits, then export the kit</li>
+                <li>Describe an idea — AI writes scenes and dialogue</li><li>Lock characters, places and style</li><li>Refine shots, prompts and continuity</li><li>Generate each shot in Higgsfield or Sora</li>
               </ol>
             </Card>
           )}

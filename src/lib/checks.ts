@@ -10,14 +10,15 @@ export type Fix =
   | { kind: "style" }
   | { kind: "lighting"; lighting: string }
   | { kind: "trim"; duration: number }
-  | { kind: "relink"; frameId: string | null };
+  | { kind: "relink"; frameId: string | null }
+  | { kind: "addChar"; characterId: string };
 
 export interface Issue {
   id: string;
   shotId: string;
   shotNo: number;
   severity: "conflict" | "review";
-  area: "Character" | "Location" | "Style" | "Lighting" | "Duration" | "Frames";
+  area: "Character" | "Location" | "Style" | "Lighting" | "Duration" | "Frames" | "Dialogue";
   title: string;
   message: string;
   fixLabel: string;
@@ -43,6 +44,17 @@ export function shotIssues(p: Project, s: Shot): Issue[] {
         fixLabel: "Apply locked wardrobe", fix: { kind: "wardrobe", characterId: c.id, wardrobeId: locked.id }, keepLabel: "Keep intentional change",
       });
     }
+  }
+  const offscreen = /\b(v\.?o\.?|voice-?over|o\.?s\.?|off[- ]?screen|phone|radio)\b/i;
+  for (const d of s.dialogue) {
+    const c = p.characters.find((x) => x.id === d.speaker);
+    if (!c || !d.line.trim() || offscreen.test(d.delivery) || s.characters.some((x) => x.characterId === c.id)) continue;
+    add({
+      id: `speaker:${c.id}`, severity: "review", area: "Dialogue",
+      title: "Speaker isn't in the shot",
+      message: `${c.name} has a line in ${tag} but isn't in the shot's cast — the video tool won't know who is speaking.`,
+      fixLabel: `Add ${c.name} to the shot`, fix: { kind: "addChar", characterId: c.id }, keepLabel: "Keep (off-screen)",
+    });
   }
   const { l } = shotLocation(p, s);
   if (l?.locked && s.architectureOverride.trim() && s.architectureOverride.trim() !== l.architecture.trim()) {

@@ -148,6 +148,7 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
   const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
   try {
+    if (body.task === "json") return res.status(200).json(await llm(cut(body.system, 12000), cut(body.user, 20000), Math.min(8000, Number(body.maxTokens) || 4000)));
     if (body.task === "storyboard") return res.status(200).json(await storyboard(body));
     if (body.task === "assist") return res.status(200).json(await assist(body));
     if (body.task === "image") { if (!ip) throw new Error("Image generation is turned off on the server."); return res.status(200).json(await image(body)); }

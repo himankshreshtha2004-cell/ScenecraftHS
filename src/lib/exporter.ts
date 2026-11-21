@@ -3,11 +3,11 @@ import JSZip from "jszip";
 import { blobOf, extOf, rasterize } from "./assets";
 import { continuityStatus, creditTotals, projectIssues, readiness, shotIssues, STATUS_LABEL, totalDuration } from "./checks";
 import { fmtDur, pad, slug } from "./ids";
-import { buildImagePrompt, promptOf, shotCharacters, shotLocation } from "./prompt";
+import { buildImagePrompt, dialogueLines, formatPrompt, promptOf, shotCharacters, shotLocation } from "./prompt";
 import type { Project, Shot } from "./types";
 
-export interface KitOptions { approvedOnly: boolean; images: boolean; prompts: boolean; characters: boolean; locations: boolean; frames: boolean; shotList: boolean; pdf: boolean; notes: boolean }
-export const defaultKit = (): KitOptions => ({ approvedOnly: false, images: true, prompts: true, characters: true, locations: true, frames: true, shotList: true, pdf: true, notes: true });
+export interface KitOptions { approvedOnly: boolean; script: boolean; images: boolean; prompts: boolean; characters: boolean; locations: boolean; frames: boolean; shotList: boolean; pdf: boolean; notes: boolean }
+export const defaultKit = (): KitOptions => ({ approvedOnly: false, script: true, images: true, prompts: true, characters: true, locations: true, frames: true, shotList: true, pdf: true, notes: true });
 
 const sceneNo = (p: Project, s: Shot) => p.scenes.findIndex((x) => x.id === s.sceneId) + 1;
 const shotName = (p: Project, s: Shot) => `SCENE_${pad(Math.max(1, sceneNo(p, s)))}_SHOT_${pad(p.shots.indexOf(s) + 1)}_${slug(s.title)}`;
@@ -22,12 +22,13 @@ async function imageFile(id: string): Promise<{ data: Uint8Array | Blob; ext: st
 }
 
 export function shotListCSV(p: Project) {
-  const head = ["Scene number", "Scene", "Shot number", "Shot title", "Duration (s)", "Camera angle", "Camera movement", "Lighting", "Time of day", "Characters", "Location", "Location variation", "Status", "Readiness", "Continuity"];
+  const head = ["Scene number", "Scene", "Shot number", "Shot title", "Duration (s)", "Camera angle", "Camera movement", "Lighting", "Time of day", "Characters", "Location", "Location variation", "Dialogue", "Sound", "Status", "Readiness", "Continuity"];
   const rows = p.shots.map((s, i) => {
     const { l, v } = shotLocation(p, s);
     const r = readiness(p, s);
     return [Math.max(1, sceneNo(p, s)), p.scenes[sceneNo(p, s) - 1]?.title ?? "", i + 1, s.title, s.duration, s.framing, s.movement, s.lighting, s.timeOfDay,
       shotCharacters(p, s).map(({ c, w }) => `${c.name}${w ? ` (${w.name})` : ""}`).join("; "), l?.name ?? "", v?.name ?? "",
+      dialogueLines(p, s).map((d) => `${d.who}${d.how ? ` (${d.how})` : ""}: ${d.line}`).join(" / "), s.sound,
       s.status[0].toUpperCase() + s.status.slice(1), r.ready ? "Ready" : `${r.checks.filter((c) => c.ok && !c.na).length}/${r.checks.filter((c) => !c.na).length}`, STATUS_LABEL[continuityStatus(shotIssues(p, s))]];
   });
   return [head, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n") + "\r\n";
@@ -43,7 +44,14 @@ export function promptFile(p: Project, s: Shot) {
     `Location: ${l ? `${l.name}${v ? ` — ${v.name}` : ""}` : "none"}`,
     `References to upload: ${[s.startFrameId && "start frame", s.endFrameId && "end frame", ...shotCharacters(p, s).filter(({ c }) => c.refAssetIds.length).map(({ c }) => `${c.name} reference`), l?.refAssetIds.length ? `${l.name} reference` : ""].filter(Boolean).join(", ") || "none"}`,
     "",
-    "VIDEO PROMPT",
+    ...(dialogueLines(p, s).length ? ["DIALOGUE", ...dialogueLines(p, s).map((d) => `${d.who.toUpperCase()}${d.how ? ` (${d.how})` : ""}: "${d.line}"`), ""] : []),
+    "VIDEO PROMPT — HIGGSFIELD",
+    formatPrompt(p, s, "higgsfield"),
+    "",
+    "VIDEO PROMPT — OPENAI SORA",
+    formatPrompt(p, s, "sora"),
+    "",
+    "VIDEO PROMPT — FULL (any tool)",
     promptOf(p, s),
     "",
     "STILL / STORYBOARD IMAGE PROMPT",
@@ -100,6 +108,26 @@ export function projectNotes(p: Project) {
   return L.join("\n");
 }
 
+export function scriptMarkdown(p: Project) {
+  const L: string[] = [`# ${p.title}`, ""];
+  if (p.logline) L.push(`*${p.logline}*`, "");
+  L.push(`${p.genre} · ${p.filmStyle} · ${p.aspect} · ${p.shots.length} shots · ${fmtDur(totalDuration(p))}`, "");
+  p.scenes.forEach((sc, k) => {
+    const shots = p.shots.filter((s) => s.sceneId === sc.id);
+    if (!shots.length) return;
+    L.push(`## Scene ${k + 1} — ${sc.title}`, "");
+    if (sc.summary) L.push(`_${sc.summary}_`, "");
+    shots.forEach((s) => {
+      const { l } = shotLocation(p, s);
+      L.push(`**SHOT ${pad(p.shots.indexOf(s) + 1)}. ${(l?.name ?? "Location TBD").toUpperCase()} — ${s.timeOfDay.toUpperCase()}** (${s.duration}s, ${s.framing.toLowerCase()}, ${s.movement.toLowerCase()})`, "");
+      L.push([s.description, s.motion].filter(Boolean).join(" ") || "—", "");
+      dialogueLines(p, s).forEach((d) => L.push(`> **${d.who.toUpperCase()}${d.vo ? " (V.O.)" : ""}**${d.how && !d.vo ? ` _(${d.how})_` : ""}  `, `> ${d.line}`, ""));
+      if (s.sound) L.push(`SOUND: ${s.sound}`, "");
+    });
+  });
+  return L.join("\n");
+}
+
 /* ------------------------------------------------------------------ PDF */
 const ascii = (t: string) => t.replace(/[^\x00-\xFF–—‘’“”…•]/g, "");
 
@@ -151,6 +179,7 @@ export async function storyboardPDF(p: Project, shots: Shot[]): Promise<Blob> {
         ["Scene", `${Math.max(1, sceneNo(p, s))} · ${p.scenes[sceneNo(p, s) - 1]?.title ?? ""}`], ["Camera", `${s.framing}, ${s.movement}`],
         ["Light", `${s.lighting}, ${s.timeOfDay}, ${s.mood}`], ["Cast", shotCharacters(p, s).map(({ c, w }) => `${c.name}${w ? ` (${w.name})` : ""}`).join(", ") || "—"],
         ["Location", l ? `${l.name}${v ? ` — ${v.name}` : ""}` : "—"], ["Motion", s.motion || "—"],
+        ...(dialogueLines(p, s).length ? [["Dialogue", dialogueLines(p, s).map((d) => `${d.who}: "${d.line}"`).join("  ")] as [string, string]] : []),
       ];
       doc.setFontSize(8.5);
       for (const [a, b] of meta) {
@@ -178,6 +207,7 @@ export async function buildKit(p: Project, o: KitOptions, onStep?: (t: string) =
   const files: string[] = [];
   const put = (path: string, data: any) => { f.file(path, data); files.push(path); };
 
+  if (o.script) { onStep?.("Script"); put("SCRIPT.md", scriptMarkdown(p)); }
   if (o.images) {
     onStep?.("Storyboard images");
     for (const s of shots) {

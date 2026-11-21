@@ -18,16 +18,16 @@ export function newShot(sceneId: string, n: number, partial: Partial<Shot> = {})
     lighting: "Natural Daylight", mood: "Dramatic", timeOfDay: "Afternoon", motion: "", characters: [], locationId: null,
     locationVariantId: null, architectureOverride: "", styleOverride: {}, imageIds: [], imageId: null, startFrameId: null,
     endFrameId: null, startFromShotId: null, frameNotes: "", promptText: null, promptVersions: [], status: "draft", notes: "",
-    acknowledged: [], ...partial,
+    acknowledged: [], dialogue: [], sound: "", generated: false, resultUrl: "", ...partial,
   };
 }
 
-export function emptyProject(o: { title: string; concept: string; genre: string; filmStyle: string; aspect: Project["aspect"]; targetDuration: number; complexity: Complexity }): Project {
+export function emptyProject(o: { title: string; concept: string; genre: string; filmStyle: string; aspect: Project["aspect"]; targetDuration: number; complexity: Complexity; shotCount?: number }): Project {
   const now = Date.now();
   const scene: Scene = { id: uid("sc_"), title: "Scene 1", summary: "" };
   // a blank shot scaffold sized to the chosen length — titles and descriptions are left for the filmmaker
   const per = o.complexity === "simple" ? 8 : o.complexity === "balanced" ? 6 : 4;
-  const count = Math.max(3, Math.min(24, Math.round(o.targetDuration / per)));
+  const count = o.shotCount ? Math.max(1, Math.min(40, o.shotCount)) : Math.max(3, Math.min(24, Math.round(o.targetDuration / per)));
   const each = Math.max(2, Math.round(o.targetDuration / count));
   const shots = Array.from({ length: count }, (_, i) => newShot(scene.id, i + 1, { duration: each }));
   return {
@@ -37,6 +37,13 @@ export function emptyProject(o: { title: string; concept: string; genre: string;
     ui: { view: "storyboard", selectedShotId: shots[0]?.id ?? null, boardMode: "storyboard", selectedCharacterId: null, selectedLocationId: null },
     createdAt: now, updatedAt: now, version: 1,
   };
+}
+
+/** fills in fields added in later versions so older saved projects keep working */
+export function normalizeProject(p: Project): Project {
+  p.shots = p.shots.map((s) => ({ ...({ dialogue: [], sound: "", generated: false, resultUrl: "" } as Partial<Shot>), ...s }) as Shot);
+  p.ui = { promptTarget: "higgsfield", ...p.ui };
+  return p;
 }
 
 /** Builds the bundled demo, "Midnight Echo". Its pictures are SVG sample illustrations, labelled as such. */
@@ -155,6 +162,18 @@ export async function createSampleProject(): Promise<Project> {
     }),
   ];
   shots[1].startFromShotId = shots[0].id;
+  const L = (speaker: string, line: string, delivery = "") => ({ id: uid("d_"), speaker, line, delivery });
+  shots[0].dialogue = [L(elaraC.id, "Some cities forget you. This one never did.", "V.O., tired")];
+  shots[0].sound = "steady rain, distant traffic, a low synth drone";
+  shots[1].sound = "footsteps on wet asphalt, buzzing neon signs";
+  shots[2].dialogue = [L("Voice on the phone", "Elara… it's me. You were right about the river. Come home.", "distorted, over the phone")];
+  shots[2].sound = "rain against the window, a faint electrical hiss";
+  shots[3].dialogue = [L(stranger.id, "You shouldn't have come back, detective.", "low and calm"), L(elaraC.id, "Then you shouldn't have called.", "steady")];
+  shots[3].sound = "dripping water, a distant siren";
+  shots[4].dialogue = [L(elaraC.id, "Every face on this wall was a promise I couldn't keep.", "V.O.")];
+  shots[4].sound = "a clock ticking, rain easing off";
+  shots[5].dialogue = [L(elaraC.id, "Okay. Let's finish it.", "quietly, to herself")];
+  shots[5].sound = "wind, first birds, the city waking up";
   const now = Date.now();
   const p: Project = {
     id: pid, title: "Midnight Echo",

@@ -77,7 +77,7 @@ export function applyFix(shotId: string, fix: Fix) {
     if (fix.kind === "lighting") s.lighting = fix.lighting;
     if (fix.kind === "trim") s.duration = fix.duration;
     if (fix.kind === "relink") { if (fix.frameId) s.startFrameId = fix.frameId; else s.startFromShotId = null; }
-    void p;
+    if (fix.kind === "addChar") { const c = p.characters.find((x) => x.id === fix.characterId); if (c && !s.characters.some((x) => x.characterId === c.id)) s.characters.push({ characterId: c.id, wardrobeId: c.lockedWardrobeId }); }
   });
 }
 export function acknowledge(shotId: string, issueId: string, on = true) {

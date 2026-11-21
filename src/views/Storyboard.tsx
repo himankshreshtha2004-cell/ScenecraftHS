@@ -2,14 +2,17 @@ import { closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, 
 import { horizontalListSortingStrategy, rectSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { motion } from "framer-motion";
-import { AlertTriangle, CheckCircle2, Clapperboard, Clock, Copy, Film, GripVertical, ImagePlus, LayoutGrid, Maximize2, MoreHorizontal, Move, Plus, Rows3, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clapperboard, Clock, Copy, Film, GripVertical, ImagePlus, LayoutGrid, Maximize2, MoreHorizontal, Move, Plus, Rows3, Trash2, Wand2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { FrameJobBar, MakeFramesButton } from "../components/FrameMaker";
 import ShotInspector, { ContinuityDot, StatusPill } from "../components/ShotInspector";
 import { askText, AssetImg, Button, confirmDialog, cx, DropSlot, IconButton, Menu, Pill, Progress, Segmented } from "../components/ui";
 import { continuityStatus, projectIssues, projectReadiness, readiness, STATUS_LABEL, totalDuration } from "../lib/checks";
 import { fmtDur, fmtLong, pad } from "../lib/ids";
 import { aspectRatio } from "../lib/options";
+import { frameModes, makeFrames, useFrameJob } from "../lib/frames";
 import { addShot, deleteShot, duplicateShot, moveShot, setStatus, updateShot } from "../lib/ops";
+import { dialogueLines } from "../lib/prompt";
 import type { Project, Shot } from "../lib/types";
 import { useStore } from "../store/store";
 
@@ -29,6 +32,10 @@ function ShotCard({ p, s, i, selected, overlay }: { p: Project; s: Shot; i: numb
   const st = useStore.getState();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: s.id });
   const r = readiness(p, s);
+  const job = useFrameJob();
+  const modes = frameModes();
+  const pending = !s.imageId;
+  const firstLine = dialogueLines(p, s)[0];
   const style = { transform: CSS.Transform.toString(transform), transition };
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners} role="button" tabIndex={0} aria-label={`Shot ${i + 1}: ${s.title}`} aria-pressed={selected}
@@ -59,13 +66,21 @@ function ShotCard({ p, s, i, selected, overlay }: { p: Project; s: Shot; i: numb
           {s.imageIds.length > 1 && <div className="absolute right-2 top-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[10.5px] font-semibold">{s.imageIds.length} versions</div>}
         </AssetImg>
       ) : (
-        <div onPointerDown={(e) => e.stopPropagation()}>
-          <DropSlot aspect={p.aspect} onFiles={(f) => attachImage(s.id, f)} label="Add a storyboard image" sub="Click or drop · JPG, PNG, WebP" />
+        <div onPointerDown={(e) => e.stopPropagation()} className="relative">
+          {job.running && job.mode && pending ? (
+            <div className="rounded-xl skeleton grid place-items-center" style={{ aspectRatio: String(aspectRatio(p.aspect)) }}><span className="text-[12px] text-mute">Drawing…</span></div>
+          ) : (
+            <>
+              <DropSlot aspect={p.aspect} onFiles={(f) => attachImage(s.id, f)} label="Add a storyboard image" sub="Drop or click to upload" />
+              {modes.length > 0 && <button onClick={() => makeFrames(modes[0], [s.id])} className="absolute right-2 bottom-2 inline-flex items-center gap-1 rounded-lg bg-ai/20 hover:bg-ai/30 text-ai text-[11.5px] font-semibold px-2 py-1"><Wand2 className="h-3 w-3" />Make frame</button>}
+            </>
+          )}
         </div>
       )}
       <div className="px-1 pt-3">
         <div className="text-[15px] font-semibold leading-tight truncate">{s.title || "Untitled shot"}</div>
         <p className={cx("text-[13px] leading-snug mt-1 line-clamp-2 min-h-[34px]", s.description ? "text-mute" : "text-faint italic")}>{s.description || "No description yet."}</p>
+        {firstLine && <p className="text-[12.5px] leading-snug mt-1.5 line-clamp-2 text-ink/85"><span className="font-semibold uppercase text-[11px] tracking-wide text-amber/90">{firstLine.who}{firstLine.vo ? " (V.O.)" : ""}</span> “{firstLine.line}”{s.dialogue.length > 1 && <span className="text-faint"> +{s.dialogue.length - 1}</span>}</p>}
         <div className="flex items-center gap-1.5 mt-2.5 text-[12px] text-mute flex-wrap">
           <span className="inline-flex items-center gap-1 rounded-md bg-white/[.05] px-1.5 h-6"><Film className="h-3 w-3" />{s.framing}</span>
           <span className="inline-flex items-center gap-1 rounded-md bg-white/[.05] px-1.5 h-6"><Move className="h-3 w-3" />{s.movement}</span>
@@ -202,8 +217,10 @@ export default function Storyboard() {
             <span className="text-sm text-faint">{p.shots.length} shots · {fmtLong(dur)}</span>
             <span className="flex-1" />
             <Segmented value={p.ui.boardMode} onChange={(v) => st.setUI({ boardMode: v })} options={[{ value: "storyboard", label: <><LayoutGrid className="h-4 w-4" />Storyboard</> }, { value: "timeline", label: <><Rows3 className="h-4 w-4" />Timeline</> }]} />
+            <MakeFramesButton p={p} />
             <Button tone="primary" icon={<Plus className="h-4 w-4" />} onClick={() => addShot(sel)} title="Add shot (N)">Add shot</Button>
           </div>
+          <div className="mb-5"><FrameJobBar /></div>
 
           {p.shots.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-line py-16 text-center">

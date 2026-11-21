@@ -8,6 +8,8 @@ import { useStore } from "./store/store";
 import { Characters, Locations } from "./views/Cast";
 import Credits from "./views/Credits";
 import Export from "./views/Export";
+import Generate from "./views/Generate";
+import Script from "./views/Script";
 import NewFilm from "./views/NewFilm";
 import PromptStudio from "./views/PromptStudio";
 import ShotEditor from "./views/ShotEditor";
@@ -16,12 +18,12 @@ import Storyboard from "./views/Storyboard";
 import { Projects, Studio } from "./views/Studio";
 import Welcome from "./views/Welcome";
 
-const ORDER: View[] = ["studio", "projects", "story", "storyboard", "characters", "locations", "prompts", "credits", "export"];
+const ORDER: View[] = ["studio", "projects", "story", "script", "storyboard", "characters", "locations", "prompts", "generate", "credits", "export"];
 
 function Workspace() {
   const view = useStore((s) => s.view), p = useStore((s) => s.project);
   const needs = !["studio", "projects"].includes(view);
-  const body = needs && !p ? <Projects /> : view === "studio" ? <Studio /> : view === "projects" ? <Projects /> : view === "story" ? <Story /> : view === "storyboard" ? <Storyboard />
+  const body = needs && !p ? <Projects /> : view === "studio" ? <Studio /> : view === "projects" ? <Projects /> : view === "story" ? <Story /> : view === "script" ? <Script /> : view === "generate" ? <Generate /> : view === "storyboard" ? <Storyboard />
     : view === "shot" ? <ShotEditor /> : view === "characters" ? <Characters /> : view === "locations" ? <Locations /> : view === "prompts" ? <PromptStudio /> : view === "credits" ? <Credits /> : <Export />;
   const scrolls = view === "studio" || view === "projects";
   return (

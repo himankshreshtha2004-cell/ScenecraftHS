@@ -136,7 +136,7 @@ export function SettingsOverlay() {
             <Status on={ai.text} l="Storyboard & Prompt Assistant" d={ai.text ? `Connected · ${ai.provider}` : "Not connected"} />
             <Status on={ai.image} l="Storyboard image generation" d={ai.image ? `Connected · ${ai.imageProvider}` : "Not connected"} />
           </div>
-          <p className="text-[13px] text-mute mt-3 leading-relaxed">Everything in SceneCraft works without AI. AI features switch on when the app runs on Vercel with its server function (<span className="font-mono text-[12px]">api/ai.js</span>, included). Keys go in Vercel → Project → Settings → Environment Variables, stay on the server and never reach the browser. Redeploy after adding one.</p>
+          <p className="text-[13px] text-mute mt-3 leading-relaxed"><span className="text-ink">Opened inside Claude,</span> SceneCraft uses Claude to write films, scenes and dialogue — no key needed (Claude asks your permission the first time). <span className="text-ink">On your own Vercel site,</span> AI switches on with the server function (<span className="font-mono text-[12px]">api/ai.js</span>, included). Keys go in Vercel → Project → Settings → Environment Variables, stay on the server and never reach the browser. Redeploy after adding one.</p>
           <div className="mt-3 rounded-xl border border-line bg-surface divide-y divide-line text-[13px]">
             {[
               ["Free", "Google Gemini", "Storyboard + Prompt Assistant", "GEMINI_API_KEY", "https://aistudio.google.com/apikey", "aistudio.google.com/apikey"],
@@ -151,7 +151,7 @@ export function SettingsOverlay() {
               </div>
             ))}
           </div>
-          <p className="text-[12px] text-faint mt-2">Free tiers have daily limits set by each provider. The Claude preview page can't reach any AI service — use your Vercel copy.</p>
+          <p className="text-[12px] text-faint mt-2">Free tiers have daily limits set by each provider. Image generation only works on Vercel; inside Claude, make start frames in your image tool and upload them.</p>
           <Field label="AI endpoint (leave empty for the built-in /api/ai)" className="mt-3">
             <div className="flex gap-2"><Input value={ep} onChange={(e) => setEp(e.target.value)} placeholder="./api/ai" />
               <Button disabled={checking} icon={<RefreshCw className={cx("h-4 w-4", checking && "animate-spin")} />} onClick={async () => { try { ep.trim() ? localStorage.setItem("scenecraft.aiEndpoint", ep.trim()) : localStorage.removeItem("scenecraft.aiEndpoint"); } catch { /* */ } setChecking(true); await st.refreshAI(); setChecking(false); }}>Check</Button></div>
