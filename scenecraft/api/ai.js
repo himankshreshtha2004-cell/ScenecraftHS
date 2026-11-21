@@ -183,7 +183,8 @@ async function cloudflare(body) {
     // FLUX.2 takes multipart form data; character photos go in as reference images (input_image_0..3)
     const form = new FormData();
     form.append("prompt", prompt);
-    form.append("width", String(width)); form.append("height", String(height)); form.append("seed", String(seed));
+    // FLUX.2 [klein] accepts only prompt, width, height and input_image_0..3 (no seed, no steps)
+    form.append("width", String(width)); form.append("height", String(height));
     (Array.isArray(body.refs) ? body.refs : []).slice(0, 4).forEach((r, i) => {
       if (r && typeof r.b64 === "string" && r.b64.length < 600000) form.append(`input_image_${i}`, new Blob([Buffer.from(r.b64, "base64")], { type: r.mime || "image/jpeg" }), `ref${i}.jpg`);
     });
