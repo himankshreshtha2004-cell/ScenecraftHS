@@ -63,18 +63,19 @@ Each issue offers a one-click fix or "keep as intentional". Shots show Ready, Ne
 **Sample project — Midnight Echo**
 A six-shot neo-noir plan with locked characters, locations and style, plus one deliberate wardrobe conflict. Its pictures are **SVG sample illustrations**, labelled as such everywhere. They are not generated film stills.
 
-## Optional AI (off unless you configure it)
+## Optional AI (free options included)
 
-`api/ai.js` is a Vercel serverless function. Set these environment variables in your Vercel project, then redeploy:
+`api/ai.js` is a Vercel serverless function. Add keys in **Vercel → Project → Settings → Environment Variables**, then redeploy. Keys stay on the server; the browser only learns which features are on.
 
-| Variable | Turns on |
-| --- | --- |
-| `ANTHROPIC_API_KEY` | AI storyboard proposals in **Create My Storyboard**, and the **Prompt Assistant** (suggestions you approve before they apply) |
-| `ANTHROPIC_MODEL` | optional, defaults to `claude-sonnet-5-5` |
-| `OPENAI_API_KEY` | **Generate** storyboard images in the shot editor |
-| `OPENAI_IMAGE_MODEL` | optional, defaults to `gpt-image-1` |
+| Variable | Cost | Turns on |
+| --- | --- | --- |
+| `GEMINI_API_KEY` (from aistudio.google.com/apikey) | free tier | AI storyboard proposals + Prompt Assistant |
+| `GROQ_API_KEY` (from console.groq.com/keys) | free tier | the same, as an alternative to Gemini |
+| *(nothing — Pollinations)* | free, no key | storyboard image generation; rate-limited, may add a watermark. `POLLINATIONS_API_KEY` raises limits, `POLLINATIONS=off` turns it off |
+| `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | paid | Claude for text / OpenAI for images |
 
-Keys stay on the server. The browser only learns which features are available. Without keys, every AI button is replaced by an explanation, and the rest of the app works fully. The AI calls are implemented but were not tested against the live APIs during development.
+Optional: `GEMINI_MODEL` (default `gemini-flash-latest`), `GROQ_MODEL` (default `llama-3.3-70b-versatile`), `ANTHROPIC_MODEL`, `OPENAI_IMAGE_MODEL`, and `TEXT_PROVIDER` to pick between several text keys. Free tiers have daily limits set by each provider.
+Without a text key, AI buttons are replaced by an explanation and the rest of the app works fully. The provider calls are implemented but weren't tested against the live services during development.
 
 ## Run and deploy
 

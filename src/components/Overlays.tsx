@@ -136,10 +136,22 @@ export function SettingsOverlay() {
             <Status on={ai.text} l="Storyboard & Prompt Assistant" d={ai.text ? `Connected · ${ai.provider}` : "Not connected"} />
             <Status on={ai.image} l="Storyboard image generation" d={ai.image ? `Connected · ${ai.imageProvider}` : "Not connected"} />
           </div>
-          <p className="text-[13px] text-mute mt-3 leading-relaxed">
-            Everything in SceneCraft works without AI. To turn on AI features, deploy the app with its server function (<span className="font-mono text-[12px]">api/ai.js</span>, included) and set
-            <span className="font-mono text-[12px] text-ink/85"> ANTHROPIC_API_KEY</span> (storyboard + prompt assistant) and/or <span className="font-mono text-[12px] text-ink/85">OPENAI_API_KEY</span> (images) as environment variables on Vercel. Keys stay on the server and are never sent to the browser.
-          </p>
+          <p className="text-[13px] text-mute mt-3 leading-relaxed">Everything in SceneCraft works without AI. AI features switch on when the app runs on Vercel with its server function (<span className="font-mono text-[12px]">api/ai.js</span>, included). Keys go in Vercel → Project → Settings → Environment Variables, stay on the server and never reach the browser. Redeploy after adding one.</p>
+          <div className="mt-3 rounded-xl border border-line bg-surface divide-y divide-line text-[13px]">
+            {[
+              ["Free", "Google Gemini", "Storyboard + Prompt Assistant", "GEMINI_API_KEY", "https://aistudio.google.com/apikey", "aistudio.google.com/apikey"],
+              ["Free", "Groq", "Storyboard + Prompt Assistant", "GROQ_API_KEY", "https://console.groq.com/keys", "console.groq.com/keys"],
+              ["Free, no key", "Pollinations", "Storyboard images", "on automatically", "https://enter.pollinations.ai", "enter.pollinations.ai (optional, higher limits)"],
+              ["Paid", "Anthropic / OpenAI", "Text / images", "ANTHROPIC_API_KEY · OPENAI_API_KEY", "", ""],
+            ].map(([tag, name, what, env, href, link]) => (
+              <div key={name} className="flex items-center gap-3 px-3.5 py-2.5">
+                <Pill tone={tag.startsWith("Free") ? "ok" : "neutral"}>{tag}</Pill>
+                <div className="flex-1 min-w-0"><div className="font-medium">{name} <span className="text-faint font-normal">· {what}</span></div>
+                  <div className="text-[12px] text-faint"><span className="font-mono text-ink/80">{env}</span>{href && <> · {name === "Pollinations" ? "key" : "get a key"} at <a href={href} target="_blank" rel="noreferrer" className="text-amber hover:underline">{link}</a></>}</div></div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[12px] text-faint mt-2">Free tiers have daily limits set by each provider. The Claude preview page can't reach any AI service — use your Vercel copy.</p>
           <Field label="AI endpoint (leave empty for the built-in /api/ai)" className="mt-3">
             <div className="flex gap-2"><Input value={ep} onChange={(e) => setEp(e.target.value)} placeholder="./api/ai" />
               <Button disabled={checking} icon={<RefreshCw className={cx("h-4 w-4", checking && "animate-spin")} />} onClick={async () => { try { ep.trim() ? localStorage.setItem("scenecraft.aiEndpoint", ep.trim()) : localStorage.removeItem("scenecraft.aiEndpoint"); } catch { /* */ } setChecking(true); await st.refreshAI(); setChecking(false); }}>Check</Button></div>
