@@ -44,9 +44,9 @@ function parseJSON(text) {
   return JSON.parse(text.slice(a, b + 1));
 }
 
-async function gemini(system, user, maxTokens, model = GEMINI_MODEL) {
+async function gemini(system, user, maxTokens, model = GEMINI_MODEL, signal) {
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-    method: "POST",
+    method: "POST", signal,
     headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
@@ -59,9 +59,9 @@ async function gemini(system, user, maxTokens, model = GEMINI_MODEL) {
   return parseJSON((j.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join(""));
 }
 
-async function groq(system, user, maxTokens) {
+async function groq(system, user, maxTokens, signal) {
   const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
+    method: "POST", signal,
     headers: { "content-type": "application/json", authorization: `Bearer ${process.env.GROQ_API_KEY}` },
     body: JSON.stringify({ model: GROQ_MODEL, max_tokens: maxTokens, temperature: 0.7, response_format: { type: "json_object" },
       messages: [{ role: "system", content: system + "\nRespond with a single JSON object." }, { role: "user", content: user }] }),
@@ -86,14 +86,19 @@ async function llm(system, user, maxTokens) {
   const list = textProviders();
   if (!list.length) throw new Error("No text AI key is set on the server (GEMINI_API_KEY, GROQ_API_KEY or ANTHROPIC_API_KEY).");
   const errors = [];
+  // stay inside the function's time limit (vercel.json maxDuration 300 s): no single AI may hang the whole request
+  const deadline = Date.now() + 270000;
+  const sig = (cap) => AbortSignal.timeout(Math.max(5000, Math.min(cap, deadline - Date.now())));
   for (const p of list) {
     const attempts = p === "gemini"
-      ? [() => gemini(system, user, maxTokens), () => gemini(system, user, maxTokens, process.env.GEMINI_FALLBACK_MODEL || "gemini-flash-lite-latest")]
-      : [() => (p === "groq" ? groq : claude)(system, user, maxTokens)];
+      ? [() => gemini(system, user, maxTokens, GEMINI_MODEL, sig(100000)), () => gemini(system, user, maxTokens, process.env.GEMINI_FALLBACK_MODEL || "gemini-flash-lite-latest", sig(80000))]
+      : [() => (p === "groq" ? groq : claude)(system, user, maxTokens, sig(120000))];
     for (let i = 0; i < attempts.length; i++) {
       try { return await attempts[i](); }
-      catch (e) {
+      catch (e0) {
+        const e = e0?.name === "TimeoutError" || e0?.name === "AbortError" ? Object.assign(new Error("took too long to answer (timeout)"), { status: 504 }) : e0;
         errors.push(`${LABEL[p]}: ${e?.message || e}`);
+        if (Date.now() > deadline - 5000) break;
         if (!transient(e)) { if (list.length === 1) throw e; break; }
         if (list.length === 1 && i === attempts.length - 1) { await wait(2500); try { return await attempts[0](); } catch (e2) { throw e2; } }
       }
@@ -110,9 +115,9 @@ const TIMES = ["Dawn", "Morning", "Midday", "Afternoon", "Golden Hour", "Dusk", 
 
 const cut = (s, n) => String(s ?? "").slice(0, n);
 
-async function claude(system, user, maxTokens = 4000) {
+async function claude(system, user, maxTokens = 4000, signal) {
   const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
+    method: "POST", signal,
     headers: { "content-type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({ model: TEXT_MODEL, max_tokens: maxTokens, system, messages: [{ role: "user", content: user }] }),
   });
