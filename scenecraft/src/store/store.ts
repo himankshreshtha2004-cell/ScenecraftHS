@@ -75,6 +75,16 @@ export function metaOf(p: Project): ProjectMeta {
 }
 
 const clone = <T,>(x: T): T => structuredClone(x);
+
+/** turns a browser database error into what the person should actually do */
+function storageProblem(e: any): string {
+  const name = String(e?.inner?.name || e?.name || ""), msg = String(e?.inner?.message || e?.message || "");
+  console.error("SceneCraft storage error:", name, msg, e);
+  if (/Quota/i.test(name + msg)) return "Your computer's disk (or the browser's storage) is full, so work can't be saved. Free some space on the C: drive, then reload.";
+  if (/backing store|Internal error|UnknownError/i.test(name + msg)) return "The browser couldn't open SceneCraft's saved data. Close every Chrome window, open Chrome again and reload — your projects are still there. (Don't clear site data.)";
+  if (/VersionError|newer version/i.test(name + msg)) return "SceneCraft is open in an older tab. Close the other SceneCraft tabs and reload.";
+  return `This browser is blocking SceneCraft from saving (${name || "storage blocked"}). Use a normal Chrome window (not Incognito), and check the padlock in the address bar → Site settings → Cookies and site data is Allowed.`;
+}
 let lastKey = "", lastAt = 0, saveTimer: number | undefined;
 
 export const useStore = create<State>((set, get) => ({
@@ -84,14 +94,17 @@ export const useStore = create<State>((set, get) => ({
 
   async init() {
     try {
-      const ps = await loadProjects();
+      let ps: Awaited<ReturnType<typeof loadProjects>>;
+      // Chrome sometimes fails to open its database on the first try (after a crash or update): retry once
+      try { ps = await loadProjects(); }
+      catch { await new Promise((r) => setTimeout(r, 900)); try { db.close(); await db.open(); } catch { /* reported below */ } ps = await loadProjects(); }
       set({ metas: ps.map(metaOf), ready: true });
       const last = get().lastProjectId;
       if (last && !ps.some((p) => p.id === last)) set({ lastProjectId: null });
       // cover images for the project cards
       ps.forEach((p) => { const c = metaOf(p).coverAssetId; if (c) blobOf(c); });
-    } catch (e) {
-      set({ ready: true, save: "error", saveError: "This browser blocked local storage, so work can't be saved. Try a normal (not private) window." });
+    } catch (e: any) {
+      set({ ready: true, save: "error", saveError: storageProblem(e) });
     }
     get().refreshAI();
   },
