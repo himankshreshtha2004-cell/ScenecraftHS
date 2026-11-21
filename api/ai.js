@@ -7,14 +7,17 @@
 //   ANTHROPIC_API_KEY   paid                                  (ANTHROPIC_MODEL, default claude-sonnet-5-5)
 //   TEXT_PROVIDER       optional: "gemini" | "groq" | "anthropic" to force one
 //
-// IMAGES (storyboard image generation):
-//   OPENAI_API_KEY      paid                                  (OPENAI_IMAGE_MODEL, default gpt-image-1)
-//   otherwise Pollinations.ai — free, works without a key (rate-limited; may add a watermark).
-//   POLLINATIONS_API_KEY optional free key from enter.pollinations.ai for higher limits.
-//   POLLINATIONS=off    turns the free image service off.
+// IMAGES (storyboard image generation) — the first one that is set is used:
+//   OPENAI_API_KEY      paid, separate from a ChatGPT subscription (OPENAI_IMAGE_MODEL, default gpt-image-2.5-flare)
+//   CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN
+//                       FREE: Cloudflare Workers AI, FLUX.1 schnell — 10,000 free "neurons" a day (~150 frames)
+//                       (CLOUDFLARE_IMAGE_MODEL, default @cf/black-forest-labs/flux-1-schnell)
+//   POLLINATIONS_API_KEY Pollinations (gen.pollinations.ai) — now needs a key with Pollen credit on it.
+//   IMAGE_PROVIDER      optional: "openai" | "cloudflare" | "pollinations" to force one
+// With none of these set, the storyboard falls back to AI-drawn sketches (needs a text key).
 
 const TEXT_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
-const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
+const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.5-flare";
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
@@ -24,12 +27,16 @@ function textProvider() {
   if (forced && has[forced]) return forced;
   return has.gemini ? "gemini" : has.groq ? "groq" : has.anthropic ? "anthropic" : null;
 }
+const CF_ACCOUNT = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID || "";
+const CF_TOKEN = process.env.CLOUDFLARE_API_TOKEN || process.env.CF_API_TOKEN || "";
+const CF_MODEL = process.env.CLOUDFLARE_IMAGE_MODEL || "@cf/black-forest-labs/flux-1-schnell";
 function imageProvider() {
-  if (process.env.OPENAI_API_KEY) return "openai";
-  if ((process.env.POLLINATIONS || "").toLowerCase() === "off") return null;
-  return "pollinations";
+  const has = { openai: !!process.env.OPENAI_API_KEY, cloudflare: !!(CF_ACCOUNT && CF_TOKEN), pollinations: !!process.env.POLLINATIONS_API_KEY && (process.env.POLLINATIONS || "").toLowerCase() !== "off" };
+  const forced = (process.env.IMAGE_PROVIDER || "").toLowerCase();
+  if (forced && has[forced]) return forced;
+  return has.openai ? "openai" : has.cloudflare ? "cloudflare" : has.pollinations ? "pollinations" : null;
 }
-const LABEL = { gemini: "Gemini (free tier)", groq: "Groq (free tier)", anthropic: "Claude", openai: "OpenAI", pollinations: "Pollinations (free)" };
+const LABEL = { gemini: "Gemini (free tier)", groq: "Groq (free tier)", anthropic: "Claude", openai: "OpenAI", cloudflare: "Cloudflare FLUX (free)", pollinations: "Pollinations" };
 
 function parseJSON(text) {
   const a = text.indexOf("{"), b = text.lastIndexOf("}");
@@ -115,19 +122,46 @@ Never remove or alter these locked details: ${(body.locked || []).map((x) => cut
   return llm(system, user, 2500);
 }
 
+const SIZES = (aspect) => aspect === "9:16" ? [768, 1344] : aspect === "1:1" ? [1024, 1024] : aspect === "2.39:1" ? [1536, 640] : [1344, 768];
+
+async function cloudflare(body) {
+  const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(CF_ACCOUNT)}/ai/run/${CF_MODEL}`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${CF_TOKEN}` },
+    body: JSON.stringify({ prompt: cut(`${body.prompt} Wide ${body.aspect || "16:9"} cinematic composition.`, 2000), steps: 6, seed: Math.floor(Math.random() * 1e6) }),
+  });
+  const type = r.headers.get("content-type") || "";
+  if (type.startsWith("image/")) return { b64: Buffer.from(await r.arrayBuffer()).toString("base64"), mime: type.split(";")[0] };
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.success === false) {
+    const msg = j?.errors?.[0]?.message || `Cloudflare error ${r.status}`;
+    if (r.status === 429 || /neuron|daily|limit/i.test(msg)) throw new Error("Today's free Cloudflare image allowance is used up — it resets at 05:30 India time (00:00 UTC).");
+    if (r.status === 401 || r.status === 403) throw new Error("Cloudflare rejected the key — check CLOUDFLARE_ACCOUNT_ID and that CLOUDFLARE_API_TOKEN has Workers AI permission.");
+    throw new Error(msg);
+  }
+  const b64 = j?.result?.image;
+  if (!b64) throw new Error("Cloudflare didn't return an image.");
+  return { b64, mime: "image/jpeg" };
+}
+
 async function pollinations(body) {
-  const [w, h] = body.aspect === "9:16" ? [768, 1344] : body.aspect === "1:1" ? [1024, 1024] : body.aspect === "2.39:1" ? [1536, 640] : [1344, 768];
+  const [w, h] = SIZES(body.aspect);
   const q = new URLSearchParams({ width: String(w), height: String(h), model: "flux", nologo: "true", seed: String(Math.floor(Math.random() * 1e6)) });
-  const headers = process.env.POLLINATIONS_API_KEY ? { authorization: `Bearer ${process.env.POLLINATIONS_API_KEY}` } : {};
-  const r = await fetch(`https://image.pollinations.ai/prompt/${encodeURIComponent(cut(body.prompt, 1500))}?${q}`, { headers });
-  if (!r.ok) throw new Error(r.status === 429 ? "The free image service is busy — wait about 15 seconds and try again." : `Pollinations error ${r.status}`);
+  const r = await fetch(`https://gen.pollinations.ai/image/${encodeURIComponent(cut(body.prompt, 1500))}?${q}`, { headers: { authorization: `Bearer ${process.env.POLLINATIONS_API_KEY}` } });
+  if (!r.ok) {
+    if (r.status === 402) throw new Error("Pollinations has no credit left on this key (error 402) — it's no longer free. Add the free Cloudflare keys instead.");
+    if (r.status === 401 || r.status === 403) throw new Error("Pollinations rejected the key (use a secret sk_ key from enter.pollinations.ai).");
+    throw new Error(r.status === 429 ? "The image service is busy — wait about 15 seconds and try again." : `Pollinations error ${r.status}`);
+  }
   const type = r.headers.get("content-type") || "image/jpeg";
-  if (!type.startsWith("image/")) throw new Error("The free image service didn't return an image.");
+  if (!type.startsWith("image/")) throw new Error("Pollinations didn't return an image.");
   return { b64: Buffer.from(await r.arrayBuffer()).toString("base64"), mime: type.split(";")[0] };
 }
 
 async function image(body) {
-  if (imageProvider() === "pollinations") return pollinations(body);
+  const ip = imageProvider();
+  if (ip === "cloudflare") return cloudflare(body);
+  if (ip === "pollinations") return pollinations(body);
   const size = body.aspect === "9:16" ? "1024x1536" : body.aspect === "1:1" ? "1024x1024" : "1536x1024";
   const r = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",

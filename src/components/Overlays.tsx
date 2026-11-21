@@ -141,17 +141,19 @@ export function SettingsOverlay() {
             {[
               ["Free", "Google Gemini", "Storyboard + Prompt Assistant", "GEMINI_API_KEY", "https://aistudio.google.com/apikey", "aistudio.google.com/apikey"],
               ["Free", "Groq", "Storyboard + Prompt Assistant", "GROQ_API_KEY", "https://console.groq.com/keys", "console.groq.com/keys"],
-              ["Free, no key", "Pollinations", "Storyboard images", "on automatically", "https://enter.pollinations.ai", "enter.pollinations.ai (optional, higher limits)"],
-              ["Paid", "Anthropic / OpenAI", "Text / images", "ANTHROPIC_API_KEY · OPENAI_API_KEY", "", ""],
+              ["Free", "Cloudflare Workers AI", "Storyboard photos (~150 a day)", "CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN", "https://dash.cloudflare.com/profile/api-tokens", "dash.cloudflare.com (Workers AI token)"],
+              ["Paid", "Pollinations", "Storyboard photos", "POLLINATIONS_API_KEY", "https://enter.pollinations.ai", "enter.pollinations.ai (needs Pollen credit)"],
+              ["Paid", "OpenAI API (not ChatGPT Plus)", "Photo frames", "OPENAI_API_KEY", "https://platform.openai.com/api-keys", "platform.openai.com/api-keys"],
+              ["Paid", "Anthropic", "Storyboard + Prompt Assistant", "ANTHROPIC_API_KEY", "", ""],
             ].map(([tag, name, what, env, href, link]) => (
               <div key={name} className="flex items-center gap-3 px-3.5 py-2.5">
                 <Pill tone={tag.startsWith("Free") ? "ok" : "neutral"}>{tag}</Pill>
                 <div className="flex-1 min-w-0"><div className="font-medium">{name} <span className="text-faint font-normal">· {what}</span></div>
-                  <div className="text-[12px] text-faint"><span className="font-mono text-ink/80">{env}</span>{href && <> · {name === "Pollinations" ? "key" : "get a key"} at <a href={href} target="_blank" rel="noreferrer" className="text-amber hover:underline">{link}</a></>}</div></div>
+                  <div className="text-[12px] text-faint"><span className="font-mono text-ink/80">{env}</span>{href && <> · get a key at <a href={href} target="_blank" rel="noreferrer" className="text-amber hover:underline">{link}</a></>}</div></div>
               </div>
             ))}
           </div>
-          <p className="text-[12px] text-faint mt-2">Free tiers have daily limits set by each provider. Image generation only works on Vercel; inside Claude, make start frames in your image tool and upload them.</p>
+          <p className="text-[12px] text-faint mt-2">Have ChatGPT Plus? It can't be connected (its image allowance isn't available to other apps), but you can use it by hand: Storyboard → Make frames → <span className="text-ink/80">Copy image prompts for ChatGPT</span>, then <span className="text-ink/80">Upload frames for shots</span>. Free tiers have daily limits set by each provider. With no image key, the storyboard is drawn as sketches by your text AI instead. Image generation only works on Vercel; inside Claude, make start frames in your image tool and upload them.</p>
           <Field label="AI endpoint (leave empty for the built-in /api/ai)" className="mt-3">
             <div className="flex gap-2"><Input value={ep} onChange={(e) => setEp(e.target.value)} placeholder="./api/ai" />
               <Button disabled={checking} icon={<RefreshCw className={cx("h-4 w-4", checking && "animate-spin")} />} onClick={async () => { try { ep.trim() ? localStorage.setItem("scenecraft.aiEndpoint", ep.trim()) : localStorage.removeItem("scenecraft.aiEndpoint"); } catch { /* */ } setChecking(true); await st.refreshAI(); setChecking(false); }}>Check</Button></div>

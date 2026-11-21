@@ -68,7 +68,7 @@ A six-shot neo-noir plan with locked characters, locations and style, plus one d
 Describe an idea and **Write My Film** produces the title, logline, a locked visual style, characters with fixed looks, locations, scenes and shots — each with action, camera, lighting, motion, **dialogue** and sound. The **Script** view reads like a screenplay; **Write next scene** continues the story and **Write dialogue** fills one shot. **Generate** walks through the film one shot at a time with the start frame, a prompt formatted for **Higgsfield** or **OpenAI Sora** (dialogue included), and a checkbox to track which clips are done.
 
 - **Number of shots:** pick Auto or an exact number (4, 6, 8, 10, 12 or any number up to 40); the AI writes exactly that many.
-- **Storyboard frames for every shot:** after the film is written, SceneCraft makes a frame for each shot automatically (or press **Make storyboard frames**). On Vercel these are **photos** from the free Pollinations image service; inside Claude they are **storyboard sketches** that Claude draws as SVG (labelled "AI sketch"; model SVG is sanitised before display).
+- **Storyboard frames for every shot:** after the film is written, SceneCraft makes a frame for each shot automatically (or press **Make storyboard frames**). On Vercel these are **photos** from the free Cloudflare Workers AI image model (FLUX.1 schnell) once you add its two keys — without an image key they are **sketches** drawn by your text AI; inside Claude they are **storyboard sketches** that Claude draws as SVG (labelled "AI sketch"; model SVG is sanitised before display).
 - **Inside Claude** (the published claude.ai page): Claude writes everything — no key needed; Claude asks permission the first time.
 - **On Vercel**: add a free Gemini or Groq key (below).
 
@@ -80,10 +80,11 @@ Describe an idea and **Write My Film** produces the title, logline, a locked vis
 | --- | --- | --- |
 | `GEMINI_API_KEY` (from aistudio.google.com/apikey) | free tier | AI storyboard proposals + Prompt Assistant |
 | `GROQ_API_KEY` (from console.groq.com/keys) | free tier | the same, as an alternative to Gemini |
-| *(nothing — Pollinations)* | free, no key | storyboard image generation; rate-limited, may add a watermark. `POLLINATIONS_API_KEY` raises limits, `POLLINATIONS=off` turns it off |
+| `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` | free (10,000 neurons a day ≈ 150 frames) | storyboard photos with FLUX.1 schnell. Free Cloudflare account → Workers AI → copy the Account ID; create an API token with the **Workers AI** template |
+| `POLLINATIONS_API_KEY` (secret `sk_` key from enter.pollinations.ai) | needs Pollen credit | storyboard photos. Pollinations no longer serves images without a funded key (error 402) |
 | `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | paid | Claude for text / OpenAI for images |
 
-Optional: `GEMINI_MODEL` (default `gemini-flash-latest`), `GROQ_MODEL` (default `llama-3.3-70b-versatile`), `ANTHROPIC_MODEL`, `OPENAI_IMAGE_MODEL`, and `TEXT_PROVIDER` to pick between several text keys. Free tiers have daily limits set by each provider.
+Optional: `GEMINI_MODEL` (default `gemini-flash-latest`), `GROQ_MODEL` (default `llama-3.3-70b-versatile`), `ANTHROPIC_MODEL`, `OPENAI_IMAGE_MODEL` (default `gpt-image-2.5-flare`), `TEXT_PROVIDER` / `IMAGE_PROVIDER` to pick between several keys, `CLOUDFLARE_IMAGE_MODEL` (default `@cf/black-forest-labs/flux-1-schnell`). With no image key, storyboard frames are drawn as sketches by the text AI. Free tiers have daily limits set by each provider.
 Without a text key, AI buttons are replaced by an explanation and the rest of the app works fully. The provider calls are implemented but weren't tested against the live services during development.
 
 ## Run and deploy

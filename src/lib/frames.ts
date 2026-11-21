@@ -1,5 +1,5 @@
 // Makes storyboard frames for many shots in one go.
-//  photo  — a real image model (Pollinations for free, or OpenAI) through the Vercel server function
+//  photo  — a real image model (Cloudflare FLUX for free, Pollinations or OpenAI) through the Vercel server function
 //  sketch — the connected language model draws a storyboard illustration as SVG (works inside Claude, no image model needed)
 import { create } from "zustand";
 import { useStore } from "../store/store";
@@ -56,7 +56,17 @@ async function makeOne(p: Project, shotId: string, mode: FrameMode) {
     if (!r) throw lastErr ?? new Error("No image");
     const bin = Uint8Array.from(atob(r.b64), (c) => c.charCodeAt(0));
     blob = new Blob([bin], { type: r.mime || "image/jpeg" });
-    const bmp = await createImageBitmap(blob).catch(() => null); w = bmp?.width ?? w; h = bmp?.height ?? h; bmp?.close?.();
+    const bmp = await createImageBitmap(blob).catch(() => null); w = bmp?.width ?? w; h = bmp?.height ?? h;
+    // some free models only make squares: centre-crop to the film's aspect ratio
+    const [aw, ah] = p.aspect.split(":").map(Number), want = aw / ah;
+    if (bmp && Math.abs(w / h - want) / want > 0.04) {
+      const cw = w / h > want ? Math.round(h * want) : w, ch = w / h > want ? h : Math.round(w / want);
+      const c = document.createElement("canvas"); c.width = cw; c.height = ch;
+      c.getContext("2d")!.drawImage(bmp, (w - cw) / 2, (h - ch) / 2, cw, ch, 0, 0, cw, ch);
+      const out = await new Promise<Blob | null>((res) => c.toBlob(res, "image/jpeg", 0.9));
+      if (out) { blob = out; w = cw; h = ch; }
+    }
+    bmp?.close?.();
     name = `AI photo — ${s.title}`;
   } else {
     const svg = sanitizeSVG(await drawSketch({ prompt, aspect: p.aspect, title: s.title }), p.aspect);
@@ -84,6 +94,9 @@ export async function makeFrames(mode: FrameMode, shotIds?: string[]) {
   useFrameJob.setState({ running: true, mode, total: ids.length, done: 0, failed: 0, current: "", cancel: false, lastError: "" });
   const pid = p0.id;
   const queue = [...ids];
+  // if photos can't be made at all (no credit, bad key), switch the rest of the run to sketches
+  let use: FrameMode = mode, switched = "";
+  const fatal = (m: string) => /402|401|403|credit|pollen|rejected|allowance|turned off|not set|no longer free/i.test(m);
   const worker = async () => {
     while (queue.length && !useFrameJob.getState().cancel) {
       const id = queue.shift()!;
@@ -91,8 +104,17 @@ export async function makeFrames(mode: FrameMode, shotIds?: string[]) {
       if (!p || p.id !== pid) return;
       const s = p.shots.find((x) => x.id === id);
       useFrameJob.setState({ current: s ? `Shot ${pad(p.shots.indexOf(s) + 1)} · ${s.title}` : "" });
-      try { await makeOne(p, id, mode); useFrameJob.setState((j) => ({ done: j.done + 1 })); }
-      catch (e: any) { useFrameJob.setState((j) => ({ failed: j.failed + 1, done: j.done + 1, lastError: e?.message || String(e) })); }
+      try { await makeOne(p, id, use); useFrameJob.setState((j) => ({ done: j.done + 1 })); }
+      catch (e: any) {
+        const msg = e?.message || String(e);
+        if (use === "photo" && fatal(msg) && useStore.getState().ai.text) {
+          use = "sketch"; switched = msg; queue.unshift(id);
+          useFrameJob.setState({ mode: "sketch" });
+          st.toast(`Photos aren't available (${msg}) Drawing sketches instead.`, "info");
+          continue;
+        }
+        useFrameJob.setState((j) => ({ failed: j.failed + 1, done: j.done + 1, lastError: msg }));
+      }
     }
   };
   // sketches can run a few at a time; free photo services allow one at a time
@@ -102,5 +124,41 @@ export async function makeFrames(mode: FrameMode, shotIds?: string[]) {
   const made = j.done - j.failed;
   if (j.cancel) st.toast(`Stopped — ${made} ${made === 1 ? "frame" : "frames"} made.`, "info");
   else if (j.failed) st.toast(`Made ${made} of ${j.total} frames. ${j.failed} failed: ${j.lastError}`, "error", { label: "Try again", run: () => makeFrames(mode) });
-  else st.toast(`Storyboard ready — ${made} ${mode === "photo" ? "photos" : "sketches"} made.`, "ok");
+  else st.toast(`Storyboard ready — ${made} ${use === "photo" ? "photos" : "sketches"} made.${switched ? " Add free Cloudflare keys on Vercel to get photos — see the README." : ""}`, "ok");
+}
+
+/* ------------------------------------------------------------------ ChatGPT (or any image app) by hand */
+/** one message to paste into ChatGPT: asks for one image per shot, numbered, with the locked looks repeated */
+export function imageBrief(p: Project, only?: string[]) {
+  const shots = p.shots.filter((s) => !only || only.includes(s.id));
+  const [w, h] = p.aspect.split(":").map(Number);
+  const L = [
+    `Please make storyboard frames for my short film "${p.title}" — ${shots.length} images, one per shot, in the order below.`,
+    `Every image: ${w >= h ? "landscape" : w === h ? "square" : "portrait"} ${p.aspect}, photorealistic cinematic film still, no text or captions. Keep each character's face, hair and outfit exactly the same in every image, and keep each location's look consistent.`,
+    `Make them one at a time; after each one I'll say "next".`,
+    "",
+  ];
+  shots.forEach((s) => L.push(`SHOT ${pad(p.shots.indexOf(s) + 1)} — ${s.title}`, buildImagePrompt(p, s), ""));
+  return L.join("\n");
+}
+
+/** puts several uploaded images onto shots: by the shot number in each file name ("shot_03.png"), otherwise in order */
+export async function bulkAssign(files: FileList | File[]) {
+  const st = useStore.getState();
+  const p = st.project; if (!p) return;
+  const list = Array.from(files).filter((f) => f.type.startsWith("image/")).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  if (!list.length) return;
+  const numOf = (n: string) => { const m = n.match(/(?:shot|frame|scene)?[ _-]*0*(\d{1,2})(?!\d)/i); return m ? Number(m[1]) : NaN; };
+  const byNumber = list.every((f) => !isNaN(numOf(f.name)) && numOf(f.name) >= 1 && numOf(f.name) <= p.shots.length) && new Set(list.map((f) => numOf(f.name))).size === list.length;
+  const empty = p.shots.filter((s) => !s.imageId);
+  const order = byNumber ? list.map((f) => p.shots[numOf(f.name) - 1]) : (empty.length >= list.length ? empty : p.shots).slice(0, list.length);
+  const added = await st.addImages(list, ["storyboard", "frame"]);
+  st.update((d) => {
+    added.forEach((a, k) => {
+      const target = order[k]; if (!target) return;
+      const x = d.shots.find((y) => y.id === target.id); if (!x) return;
+      x.imageIds.push(a.id); x.imageId = a.id; if (!x.startFrameId) x.startFrameId = a.id;
+    });
+  });
+  st.toast(`Placed ${added.length} ${added.length === 1 ? "image" : "images"} on ${byNumber ? "the shots named in the file names" : "shots in order"}.`, "ok", { label: "Undo", run: () => st.undo() });
 }

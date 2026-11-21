@@ -1,5 +1,6 @@
-import { Camera, Loader2, PenTool, Square, Wand2 } from "lucide-react";
-import { frameModes, makeFrames, modeLabel, useFrameJob, type FrameMode } from "../lib/frames";
+import { Camera, ClipboardCopy, Loader2, PenTool, Square, Upload, Wand2 } from "lucide-react";
+import { copyText } from "../lib/download";
+import { bulkAssign, frameModes, imageBrief, makeFrames, modeLabel, useFrameJob, type FrameMode } from "../lib/frames";
 import type { Project } from "../lib/types";
 import { useStore } from "../store/store";
 import { Button, Menu, Progress } from "./ui";
@@ -12,15 +13,29 @@ export function MakeFramesButton({ p, size = "md" }: { p: Project; size?: "sm" |
   const missing = p.shots.filter((s) => !s.imageId).length;
   const st = useStore.getState();
   if (job.running) return <Button size={size} tone="ai" disabled icon={<Loader2 className="h-4 w-4 animate-spin" />}>Making frames {job.done}/{job.total}</Button>;
-  if (!modes.length) return <Button size={size} tone="ai" icon={<Wand2 className="h-4 w-4" />} onClick={() => st.setOverlay("settings")} title="Needs AI — open Settings">Make frames</Button>;
+  if (!modes.length) return <Menu trigger={(_, t) => <Button size={size} tone="ai" icon={<Wand2 className="h-4 w-4" />} onClick={t}>Make frames</Button>} items={[...handItems(p), "sep" as const, { label: "Connect AI to make frames here…", icon: <Wand2 className="h-4 w-4" />, onClick: () => st.setOverlay("settings") }]} />;
   const items = (all: boolean) => modes.map((m: FrameMode) => ({
     label: `${all ? "Redo all as" : "Make"} ${modeLabel(m)}`, icon: m === "photo" ? <Camera className="h-4 w-4" /> : <PenTool className="h-4 w-4" />,
     onClick: () => makeFrames(m, all ? p.shots.map((s) => s.id) : undefined),
   }));
   return (
     <Menu trigger={(_, t) => <Button size={size} tone="ai" icon={<Wand2 className="h-4 w-4" />} onClick={t}>{missing ? `Make ${missing} storyboard ${missing === 1 ? "frame" : "frames"}` : "Remake frames"}</Button>}
-      items={[...(missing ? items(false) : []), ...(missing ? ["sep" as const] : []), ...items(true)]} />
+      items={[...(missing ? items(false) : []), ...(missing ? ["sep" as const] : []), ...items(true), "sep" as const, ...handItems(p)]} />
   );
+}
+
+const bulkInput = () => {
+  const i = document.createElement("input"); i.type = "file"; i.accept = "image/*"; i.multiple = true;
+  i.onchange = () => { if (i.files?.length) bulkAssign(i.files); };
+  i.click();
+};
+function handItems(p: Project) {
+  const st = useStore.getState();
+  const missing = p.shots.filter((s) => !s.imageId).map((s) => s.id);
+  return [
+    { label: `Copy image prompts for ChatGPT${missing.length && missing.length < p.shots.length ? ` (${missing.length} empty shots)` : ""}`, icon: <ClipboardCopy className="h-4 w-4" />, onClick: async () => { await copyText(imageBrief(p, missing.length ? missing : undefined)); st.toast("Copied — paste it into ChatGPT, then upload the images it makes with “Upload frames for shots”.", "ok"); } },
+    { label: "Upload frames for shots…", icon: <Upload className="h-4 w-4" />, onClick: bulkInput },
+  ];
 }
 
 export function FrameJobBar() {
