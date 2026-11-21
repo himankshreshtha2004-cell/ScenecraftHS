@@ -3,7 +3,7 @@
 //
 // TEXT (storyboard proposals + Prompt Assistant) — the first one that is set is used:
 //   GEMINI_API_KEY      free tier from Google AI Studio      (GEMINI_MODEL, default gemini-flash-latest)
-//   GROQ_API_KEY        free tier from console.groq.com      (GROQ_MODEL, default llama-3.3-70b-versatile)
+//   GROQ_API_KEY        free tier from console.groq.com      (GROQ_MODEL, default openai/gpt-oss-120b)
 //   ANTHROPIC_API_KEY   paid                                  (ANTHROPIC_MODEL, default claude-sonnet-5-5)
 //   TEXT_PROVIDER       optional: "gemini" | "groq" | "anthropic" to force one
 //
@@ -19,7 +19,9 @@
 const TEXT_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
 const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.5-flare";
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+// tried in order if a model is retired or not enabled on the key (Groq retires models regularly)
+const GROQ_FALLBACKS = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
 
 function textProvider() {
   const forced = (process.env.TEXT_PROVIDER || "").toLowerCase();
@@ -59,16 +61,29 @@ async function gemini(system, user, maxTokens, model = GEMINI_MODEL, signal) {
   return parseJSON((j.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join(""));
 }
 
-async function groq(system, user, maxTokens, signal) {
+async function groqOnce(model, system, user, maxTokens, signal) {
+  const reasoning = /gpt-oss|qwen3/.test(model);
   const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST", signal,
     headers: { "content-type": "application/json", authorization: `Bearer ${process.env.GROQ_API_KEY}` },
-    body: JSON.stringify({ model: GROQ_MODEL, max_tokens: maxTokens, temperature: 0.7, response_format: { type: "json_object" },
+    body: JSON.stringify({
+      model, temperature: 0.7, response_format: { type: "json_object" },
+      // reasoning models spend tokens thinking first: keep it light and leave room for the answer
+      ...(reasoning ? { max_completion_tokens: maxTokens + 3000, ...(/gpt-oss/.test(model) ? { reasoning_effort: "low" } : { reasoning_format: "hidden" }) } : { max_tokens: maxTokens }),
       messages: [{ role: "system", content: system + "\nRespond with a single JSON object." }, { role: "user", content: user }] }),
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw Object.assign(new Error(j?.error?.message || `Groq API error ${r.status}`), { status: r.status });
+  if (!r.ok) throw Object.assign(new Error(j?.error?.message || `Groq API error ${r.status}`), { status: r.status, gone: r.status === 404 || /does not exist|decommission|not have access|deprecated|not found/i.test(j?.error?.message || "") });
   return parseJSON(j.choices?.[0]?.message?.content || "");
+}
+async function groq(system, user, maxTokens, signal) {
+  const models = [GROQ_MODEL, ...GROQ_FALLBACKS.filter((m) => m !== GROQ_MODEL)];
+  let last;
+  for (const m of models) {
+    try { return await groqOnce(m, system, user, maxTokens, signal); }
+    catch (e) { last = e; if (!e.gone) throw e; }
+  }
+  throw last;
 }
 
 /** every text provider that has a key, the preferred one first */
