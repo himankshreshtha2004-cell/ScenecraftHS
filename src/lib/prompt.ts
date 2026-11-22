@@ -215,3 +215,35 @@ export function formatPrompt(p: Project, s: Shot, target: "higgsfield" | "sora" 
   L.push(`Length: about ${s.duration} seconds. Aspect ratio ${p.aspect}.`);
   return L.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
+
+/* ------------------------------------------------------------------ reference pictures for Cast */
+/** a casting/costume reference for one character: the whole person, the locked outfit, plain backdrop */
+export function buildCharacterPrompt(p: Project, c: Character): string {
+  const w = c.wardrobes.find((x) => x.id === c.lockedWardrobeId) ?? c.wardrobes[0];
+  return join([
+    sentence(`Character reference portrait for the film "${p.title}": ${c.name}${c.role ? `, the ${c.role.toLowerCase()}` : ""}`),
+    c.description && sentence(c.description),
+    c.face && sentence(`Face: ${c.face}`),
+    c.hair && sentence(`Hair: ${c.hair}`),
+    w?.clothes && sentence(`Wearing ${w.clothes}`),
+    c.accessories && sentence(`With ${c.accessories}`),
+    sentence("One person only, standing, full body from head to shoes, facing the camera at a slight three-quarter angle, relaxed neutral expression, the whole outfit clearly visible"),
+    sentence("Plain soft-grey studio backdrop, even soft lighting, no props, no text"),
+    styleSentence(p.style, p.filmStyle, true),
+  ]);
+}
+
+/** an establishing picture of one location with no people in it */
+export function buildLocationPrompt(p: Project, l: Location): string {
+  return join([
+    sentence(`Establishing wide shot of a film location for "${p.title}": ${l.name}`),
+    l.description && sentence(l.description),
+    l.architecture && sentence(`Architecture: ${l.architecture}`),
+    l.objects && sentence(`Key details: ${l.objects}`),
+    l.materials && sentence(`Materials: ${l.materials}`),
+    l.palette && sentence(`Colour palette: ${l.palette}`),
+    l.lighting && sentence(`Lighting: ${l.lighting}`),
+    sentence("No people, an empty set ready for filming, the whole space clearly readable, no text"),
+    styleSentence(p.style, p.filmStyle, true),
+  ]);
+}

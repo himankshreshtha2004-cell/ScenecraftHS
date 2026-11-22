@@ -1,30 +1,61 @@
-import { Images, MapPin, Plus, Star, Trash2, Upload, User, Users, X } from "lucide-react";
+import { Camera, Images, Loader2, MapPin, Plus, Star, Trash2, Upload, User, Users, Wand2, X } from "lucide-react";
 import { useState } from "react";
 import { LibraryPicker } from "../components/Library";
+import { FrameJobBar } from "../components/FrameMaker";
+import { makeReferences, useFrameJob } from "../lib/frames";
 import { AssetImg, Button, Card, confirmDialog, cx, Empty, Field, FileButton, IconButton, Input, LockToggle, Pill, SectionTitle, TextArea } from "../components/ui";
 import { uid, pad } from "../lib/ids";
 import { buildVideoPrompt } from "../lib/prompt";
 import type { Character, Location, Project } from "../lib/types";
 import { useStore } from "../store/store";
 
-function RefImages({ p, ids, onAdd, onRemove, kind }: { p: Project; ids: string[]; onAdd: (ids: string[]) => void; onRemove: (id: string) => void; kind: "character" | "location" }) {
+function RefImages({ p, ids, onAdd, onRemove, kind, onGenerate }: { p: Project; ids: string[]; onAdd: (ids: string[]) => void; onRemove: (id: string) => void; kind: "character" | "location"; onGenerate?: () => void }) {
   const st = useStore.getState();
   const [lib, setLib] = useState(false);
+  const job = useFrameJob();
+  const canMake = useStore((s) => s.ai.image) && !!onGenerate;
+  const main = ids[0], rest = ids.slice(1);
+  const remove = (id: string) => (
+    <button onClick={() => onRemove(id)} aria-label="Remove reference" className="absolute -right-1.5 -top-1.5 h-6 w-6 rounded-full bg-panel border border-line grid place-items-center opacity-0 group-hover:opacity-100 focus:opacity-100 text-mute hover:text-bad"><X className="h-3.5 w-3.5" /></button>
+  );
   return (
     <div>
-      <div className="grid grid-cols-3 gap-2.5">
-        {ids.map((id, i) => (
-          <div key={id} className="relative group">
-            <AssetImg id={id} assets={p.assets} aspect={kind === "character" ? "1:1" : "16:9"} className="rounded-xl" />
-            {i === 0 && <span className="absolute right-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold flex items-center gap-1"><Star className="h-2.5 w-2.5 fill-amber text-amber" />Main</span>}
-            <button onClick={() => onRemove(id)} aria-label="Remove reference" className="absolute -right-1.5 -top-1.5 h-6 w-6 rounded-full bg-panel border border-line grid place-items-center opacity-0 group-hover:opacity-100 focus:opacity-100 text-mute hover:text-bad"><X className="h-3.5 w-3.5" /></button>
+      {main ? (
+        <div className="relative group">
+          <AssetImg id={main} assets={p.assets} aspect={kind === "character" ? "3:4" : "16:9"} className="rounded-2xl" />
+          <span className="absolute right-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold flex items-center gap-1"><Star className="h-2.5 w-2.5 fill-amber text-amber" />Main look — used in every shot</span>
+          {remove(main)}
+        </div>
+      ) : (
+        <div className={cx("rounded-2xl border border-dashed border-line grid place-items-center text-center px-6", kind === "character" ? "aspect-[3/4]" : "aspect-video")}>
+          <div>
+            {kind === "character" ? <User className="h-8 w-8 mx-auto text-faint" /> : <MapPin className="h-8 w-8 mx-auto text-faint" />}
+            <p className="text-[12.5px] text-faint mt-2">{kind === "character" ? "No portrait yet. Make one so this character looks the same in every shot." : "No location photo yet. Make one so this place looks the same in every shot."}</p>
           </div>
-        ))}
-      </div>
-      <div className="flex gap-2 mt-3">
-        <FileButton size="sm" multiple icon={<Upload className="h-4 w-4" />} onFiles={async (f) => { const a = await st.addImages(f, [kind]); if (a.length) { onAdd(a.map((x) => x.id)); st.toast("Reference added.", "ok"); } }}>Upload reference</FileButton>
+        </div>
+      )}
+      {rest.length > 0 && (
+        <div className="grid grid-cols-3 gap-2.5 mt-2.5">
+          {rest.map((id) => (
+            <div key={id} className="relative group">
+              <button className="block w-full" title="Make this the main look" onClick={() => { onRemove(id); onAdd([id, ...ids.filter((x) => x !== id)]); }}>
+                <AssetImg id={id} assets={p.assets} aspect={kind === "character" ? "3:4" : "16:9"} className="rounded-xl" label={false} />
+              </button>
+              {remove(id)}
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2 mt-3">
+        {canMake && (
+          <Button size="sm" tone="ai" disabled={job.running} onClick={onGenerate} icon={job.running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}>
+            {job.running ? "Making…" : main ? (kind === "character" ? "Make a new portrait" : "Make a new photo") : (kind === "character" ? "Make portrait" : "Make location photo")}
+          </Button>
+        )}
+        <FileButton size="sm" multiple icon={<Upload className="h-4 w-4" />} onFiles={async (f) => { const a = await st.addImages(f, [kind]); if (a.length) { onAdd(a.map((x) => x.id)); st.toast("Reference added.", "ok"); } }}>Upload</FileButton>
         <Button size="sm" icon={<Images className="h-4 w-4" />} onClick={() => setLib(true)}>From library</Button>
       </div>
+      {rest.length > 0 && <p className="text-[11.5px] text-faint mt-2">Click a smaller picture to make it the main look.</p>}
       <LibraryPicker p={p} open={lib} onClose={() => setLib(false)} onPick={(id) => onAdd([id])} title="Choose a reference image" />
     </div>
   );
@@ -54,6 +85,7 @@ export function Characters() {
   const p = useStore((s) => s.project)!;
   const st = useStore.getState();
   const sel = p.characters.find((c) => c.id === p.ui.selectedCharacterId) ?? p.characters[0] ?? null;
+  const ai = useStore((s) => s.ai); const job = useFrameJob();
   const upd = (fn: (c: Character, p: Project) => void, key?: string) => sel && st.update((d) => { const c = d.characters.find((x) => x.id === sel.id); if (c) fn(c, d); }, key ? `${key}:${sel.id}` : undefined);
   const add = () => {
     const id = uid("c_"), w = uid("w_");
@@ -66,7 +98,10 @@ export function Characters() {
     <div className="h-full overflow-y-auto thin-scroll">
       <div className="max-w-[1320px] mx-auto px-8 py-7">
         <SectionTitle eyebrow="Character DNA" title="Characters" sub="Describe each character once. With Character Lock on, their appearance and locked outfit are written into every shot prompt they appear in — and any shot that drifts is flagged."
-          right={<Button tone="primary" icon={<Plus className="h-4 w-4" />} onClick={add}>New character</Button>} />
+          right={<div className="flex gap-2">
+            {ai.image && p.characters.some((c) => !c.refAssetIds.length) && <Button tone="ai" disabled={job.running} icon={<Camera className="h-4 w-4" />} onClick={() => makeReferences({ chars: p.characters.filter((c) => !c.refAssetIds.length).map((c) => c.id), locs: [] })}>Make all portraits ({p.characters.filter((c) => !c.refAssetIds.length).length})</Button>}
+            <Button tone="primary" icon={<Plus className="h-4 w-4" />} onClick={add}>New character</Button></div>} />
+        <div className="mt-5"><FrameJobBar /></div>
         {!p.characters.length ? (
           <Empty icon={<Users className="h-6 w-6" />} title="No characters yet" body="Create the people in your film so they look the same in every shot." action={<Button tone="primary" onClick={add} icon={<Plus className="h-4 w-4" />}>Create a character</Button>} />
         ) : (
@@ -74,7 +109,7 @@ export function Characters() {
             <div className="space-y-2.5 sticky top-0">
               {p.characters.map((c) => (
                 <button key={c.id} onClick={() => st.setUI({ selectedCharacterId: c.id })} className={cx("w-full flex items-center gap-3 rounded-2xl border p-2.5 text-left transition-colors", sel?.id === c.id ? "border-amber bg-white/[.04]" : "border-line bg-surface hover:border-[#4a4e5d]")}>
-                  <AssetImg id={c.refAssetIds[0]} assets={p.assets} className="h-14 w-14 rounded-xl shrink-0" label={false}>{!c.refAssetIds[0] && <User className="absolute inset-0 m-auto h-6 w-6 text-faint" />}</AssetImg>
+                  <AssetImg id={c.refAssetIds[0]} assets={p.assets} aspect="3:4" className="w-14 rounded-xl shrink-0" label={false}>{!c.refAssetIds[0] && <User className="absolute inset-0 m-auto h-6 w-6 text-faint" />}</AssetImg>
                   <span className="flex-1 min-w-0"><span className="block font-semibold truncate">{c.name}</span><span className="block text-[12.5px] text-mute truncate">{c.role || "No role yet"}</span><span className="block text-[11.5px] text-faint mt-0.5">{usedIn(c).length} {usedIn(c).length === 1 ? "shot" : "shots"}</span></span>
                   {c.locked && <Pill tone="ok">Locked</Pill>}
                 </button>
@@ -129,7 +164,7 @@ export function Characters() {
                   </div>
                   <div className="space-y-5">
                     <div><div className="text-[12.5px] font-medium text-mute mb-2">Reference images</div>
-                      <RefImages p={p} kind="character" ids={sel.refAssetIds} onAdd={(ids) => upd((c) => { c.refAssetIds = Array.from(new Set([...c.refAssetIds, ...ids])); })} onRemove={(id) => upd((c) => { c.refAssetIds = c.refAssetIds.filter((x) => x !== id); })} /></div>
+                      <RefImages p={p} kind="character" ids={sel.refAssetIds} onAdd={(ids) => upd((c) => { c.refAssetIds = ids.length > 1 && ids.every((x) => c.refAssetIds.includes(x) || x === ids[0]) ? Array.from(new Set(ids)) : Array.from(new Set([...c.refAssetIds, ...ids])); })} onRemove={(id) => upd((c) => { c.refAssetIds = c.refAssetIds.filter((x) => x !== id); })} onGenerate={() => makeReferences({ chars: [sel.id], locs: [] })} /></div>
                     {sample && (
                       <div className="rounded-xl border border-line bg-surface p-3.5">
                         <div className="text-[12px] font-semibold text-mute">In the prompt for Shot {pad(p.shots.indexOf(sample) + 1)}</div>
@@ -152,6 +187,7 @@ export function Locations() {
   const p = useStore((s) => s.project)!;
   const st = useStore.getState();
   const sel = p.locations.find((c) => c.id === p.ui.selectedLocationId) ?? p.locations[0] ?? null;
+  const ai = useStore((s) => s.ai); const job = useFrameJob();
   const upd = (fn: (l: Location, p: Project) => void, key?: string) => sel && st.update((d) => { const l = d.locations.find((x) => x.id === sel.id); if (l) fn(l, d); }, key ? `${key}:${sel.id}` : undefined);
   const add = () => {
     const id = uid("l_");
@@ -162,7 +198,10 @@ export function Locations() {
     <div className="h-full overflow-y-auto thin-scroll">
       <div className="max-w-[1320px] mx-auto px-8 py-7">
         <SectionTitle eyebrow="World DNA" title="Locations" sub="Define each place once — its architecture, key objects and materials. With Location Lock on, those details stay identical in every shot set there."
-          right={<Button tone="primary" icon={<Plus className="h-4 w-4" />} onClick={add}>New location</Button>} />
+          right={<div className="flex gap-2">
+            {ai.image && p.locations.some((l) => !l.refAssetIds.length) && <Button tone="ai" disabled={job.running} icon={<Camera className="h-4 w-4" />} onClick={() => makeReferences({ chars: [], locs: p.locations.filter((l) => !l.refAssetIds.length).map((l) => l.id) })}>Make all location photos ({p.locations.filter((l) => !l.refAssetIds.length).length})</Button>}
+            <Button tone="primary" icon={<Plus className="h-4 w-4" />} onClick={add}>New location</Button></div>} />
+        <div className="mt-5"><FrameJobBar /></div>
         {!p.locations.length ? (
           <Empty icon={<MapPin className="h-6 w-6" />} title="No locations yet" body="Add the places your film happens in." action={<Button tone="primary" onClick={add} icon={<Plus className="h-4 w-4" />}>Create a location</Button>} />
         ) : (
@@ -220,7 +259,7 @@ export function Locations() {
                       toggle={(sid, on) => st.update((d) => { const s = d.shots.find((x) => x.id === sid)!; if (on) { s.locationId = sel.id; s.locationVariantId = null; s.architectureOverride = ""; } else if (s.locationId === sel.id) { s.locationId = null; s.locationVariantId = null; } })} />
                   </div>
                   <div><div className="text-[12.5px] font-medium text-mute mb-2">Reference images</div>
-                    <RefImages p={p} kind="location" ids={sel.refAssetIds} onAdd={(ids) => upd((l) => { l.refAssetIds = Array.from(new Set([...l.refAssetIds, ...ids])); })} onRemove={(id) => upd((l) => { l.refAssetIds = l.refAssetIds.filter((x) => x !== id); })} /></div>
+                    <RefImages p={p} kind="location" ids={sel.refAssetIds} onAdd={(ids) => upd((l) => { l.refAssetIds = ids.length > 1 && ids.every((x) => l.refAssetIds.includes(x) || x === ids[0]) ? Array.from(new Set(ids)) : Array.from(new Set([...l.refAssetIds, ...ids])); })} onRemove={(id) => upd((l) => { l.refAssetIds = l.refAssetIds.filter((x) => x !== id); })} onGenerate={() => makeReferences({ chars: [], locs: [sel.id] })} /></div>
                 </div>
               </Card>
             )}

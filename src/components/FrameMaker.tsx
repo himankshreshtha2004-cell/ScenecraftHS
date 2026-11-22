@@ -45,7 +45,7 @@ export function FrameJobBar() {
     <div className="rounded-2xl border border-ai/35 bg-ai-soft/40 px-5 py-3.5 flex items-center gap-4">
       <Loader2 className="h-5 w-5 text-ai animate-spin shrink-0" />
       <div className="flex-1 min-w-0">
-        <div className="text-[13.5px] font-semibold">Making storyboard {job.mode === "photo" ? "photos" : "sketches"} — {job.done} of {job.total}</div>
+        <div className="text-[13.5px] font-semibold">{/^(Portrait|Location) ·/.test(job.current) ? "Making character portraits and location photos" : `Making storyboard ${job.mode === "photo" ? "photos" : "sketches"}`} — {job.done} of {job.total}</div>
         <div className="text-[12px] text-mute truncate">{job.current || "Starting…"}{job.mode === "photo" ? " · the free image service allows about one picture every 15 seconds" : ""}</div>
         <Progress value={job.total ? job.done / job.total : 0} tone="ai" className="mt-2" />
       </div>
