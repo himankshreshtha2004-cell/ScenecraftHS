@@ -100,18 +100,42 @@ async function saveGenerated(p: Project, r: { b64: string; mime: string }, aspec
   return storeBlob(p.id, blob, { name, mime: blob.type, width: w, height: h, origin: "generated", tags });
 }
 
+/** words that image safety filters often refuse — swapped for gentler ones on a second try */
+const SOFTEN: [RegExp, string][] = [
+  [/\b(pistols?|guns?|revolvers?|rifles?|muskets?|firearms?)\b/gi, "leather holsters"],
+  [/\b(swords?|cutlass(es)?|sabres?|sabers?|daggers?|knives|knife|blades?)\b/gi, "a scabbard"],
+  [/\b(weapons?)\b/gi, "gear"], [/\b(blood(y|ied)?|gore|gory)\b/gi, "dark"],
+  [/\b(scars?|scarred)\b/gi, "weathered mark"], [/\b(wounds?|wounded|injur(y|ies|ed))\b/gi, "worn"],
+  [/\b(dead|corpses?|bodies|killing|kill(s|ed)?|murder(s|ed)?)\b/gi, "still"], [/\b(fires?|firing|shoots?|shooting|shot at)\b/gi, "aims"],
+  [/\b(naked|nude|lingerie)\b/gi, "dressed"],
+];
+const soften = (t: string) => SOFTEN.reduce((a, [re, rep]) => a.replace(re, rep), t);
+const filtered = (m: string) => /nsfw|unsafe|safety|flag|moderat|prohibit|not allowed|3030|content policy|blocked/i.test(m);
+
 async function generateWithRetry(input: { prompt: string; aspect: string; refs?: { b64: string; mime: string }[] }) {
-  let lastErr: any;
-  for (let k = 0; k < 4; k++) {
-    try { return await generateImage(input); }
-    catch (e: any) { lastErr = e; if (/busy|429|wait/i.test(e.message)) await sleep(16000); else break; }
+  let lastErr: any, prompt = input.prompt, softened = false;
+  for (let k = 0; k < 5; k++) {
+    try { return await generateImage({ ...input, prompt }); }
+    catch (e: any) {
+      lastErr = e;
+      const m = String(e?.message || "");
+      if (/busy|429|wait/i.test(m)) { await sleep(16000); continue; }
+      if (!softened && (filtered(m) || /Cloudflare: /i.test(m))) { softened = true; prompt = soften(prompt); continue; }
+      break;
+    }
   }
+  const m = String(lastErr?.message || "");
+  if (filtered(m)) throw new Error("The image service's safety filter refused this description — try gentler words (e.g. no weapons or injuries).");
   throw lastErr ?? new Error("No image");
 }
+
+/** last failure for each character / location, shown next to its picture */
+export const useRefErrors = create<Record<string, string>>(() => ({}));
 
 /** a full-body costume/casting picture for one character; it becomes the character's main reference */
 export async function makeCharacterPortrait(characterId: string) {
   const st = useStore.getState(); const p = st.project; if (!p) return;
+  useRefErrors.setState({ [characterId]: "" });
   const c = p.characters.find((x) => x.id === characterId); if (!c) return;
   const r = await generateWithRetry({ prompt: photoPrompt(p, buildCharacterPrompt(p, c), [], "portrait"), aspect: "3:4" });
   const a = await saveGenerated(p, r, "3:4", `AI portrait — ${c.name}`, ["character", "reference"]);
@@ -120,6 +144,7 @@ export async function makeCharacterPortrait(characterId: string) {
 /** an establishing picture of one location; it becomes the location's main reference */
 export async function makeLocationPhoto(locationId: string) {
   const st = useStore.getState(); const p = st.project; if (!p) return;
+  useRefErrors.setState({ [locationId]: "" });
   const l = p.locations.find((x) => x.id === locationId); if (!l) return;
   const r = await generateWithRetry({ prompt: photoPrompt(p, buildLocationPrompt(p, l), [], "place"), aspect: p.aspect });
   const a = await saveGenerated(p, r, p.aspect, `AI location — ${l.name}`, ["location", "reference"]);
@@ -147,12 +172,17 @@ export async function makeReferences(ids: { chars: string[]; locs: string[] }) {
     const nm = q.k === "c" ? p.characters.find((x) => x.id === q.id)?.name : p.locations.find((x) => x.id === q.id)?.name;
     useFrameJob.setState({ current: `${q.k === "c" ? "Portrait" : "Location"} · ${nm ?? ""}` });
     try { await (q.k === "c" ? makeCharacterPortrait(q.id) : makeLocationPhoto(q.id)); useFrameJob.setState((j) => ({ done: j.done + 1 })); }
-    catch (e: any) { useFrameJob.setState((j) => ({ failed: j.failed + 1, done: j.done + 1, lastError: e?.message || String(e) })); if (/402|401|403|allowance|rejected|turned off|used up/i.test(e?.message || "")) break; }
+    catch (e: any) {
+      const msg = e?.message || String(e);
+      useRefErrors.setState({ [q.id]: msg });
+      useFrameJob.setState((j) => ({ failed: j.failed + 1, done: j.done + 1, lastError: `${nm}: ${msg}` }));
+      if (/402|401|403|allowance|rejected|turned off|used up/i.test(msg)) break;
+    }
   }
   const j = useFrameJob.getState();
   useFrameJob.setState({ running: false, current: "" });
   const made = j.done - j.failed;
-  if (j.failed) st.toast(`Made ${made} of ${j.total} reference pictures. ${j.lastError}`, "error");
+  if (j.failed) st.toast(`Made ${made} of ${j.total} reference pictures. Couldn't make ${j.lastError}`, "error");
   else st.toast(`${made} reference ${made === 1 ? "picture" : "pictures"} ready — every shot will now use them.`, "ok");
   return j.failed === 0;
 }

@@ -232,19 +232,23 @@ export default function Storyboard() {
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={(e) => setDragId(String(e.active.id))} onDragEnd={onEnd} onDragCancel={() => setDragId(null)}>
               {p.ui.boardMode === "storyboard" ? (
                 <SortableContext items={p.shots.map((s) => s.id)} strategy={rectSortingStrategy}>
-                  <div className="space-y-7">
-                    {groups.map((g, gi) => (
-                      <section key={gi + g.sceneId}>
-                        <div className="flex items-center gap-3 mb-3">
-                          <span className="text-[12.5px] font-semibold text-ink/80">{sceneName(g.sceneId)}</span>
-                          <span className="h-px flex-1 bg-line" />
-                          <span className="text-[12px] text-faint tabular-nums">{fmtDur(g.items.reduce((a, x) => a + x.s.duration, 0))}</span>
+                  {/* one continuous grid, so short scenes don't leave rows half empty; each scene is marked above its first shot */}
+                  <div className="grid gap-x-4 gap-y-5" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${minCol}px, 1fr))` }}>
+                    {groups.flatMap((g, gi) => g.items.map(({ s: sh, i }, k) => (
+                      <div key={sh.id} className="min-w-0">
+                        <div className="h-6 mb-1.5 flex items-center gap-2 min-w-0">
+                          {k === 0 ? (
+                            <>
+                              <span className="h-3.5 w-1 rounded-full bg-amber shrink-0" />
+                              <span className="text-[12px] font-semibold text-ink/85 truncate" title={sceneName(g.sceneId)}>{sceneName(g.sceneId)}</span>
+                              <span className="h-px flex-1 bg-line" />
+                              <span className="text-[11.5px] text-faint tabular-nums shrink-0">{g.items.length} {g.items.length === 1 ? "shot" : "shots"} · {fmtDur(g.items.reduce((a, x) => a + x.s.duration, 0))}</span>
+                            </>
+                          ) : <span className="h-px flex-1 bg-line/60" title={sceneName(g.sceneId)} />}
                         </div>
-                        <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${minCol}px, 1fr))` }}>
-                          {g.items.map(({ s, i }) => <ShotCard key={s.id} p={p} s={s} i={i} selected={s.id === sel} />)}
-                        </div>
-                      </section>
-                    ))}
+                        <ShotCard p={p} s={sh} i={i} selected={sh.id === sel} />
+                      </div>
+                    )))}
                   </div>
                 </SortableContext>
               ) : (

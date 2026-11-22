@@ -2,14 +2,15 @@ import { Camera, Images, Loader2, MapPin, Plus, Star, Trash2, Upload, User, User
 import { useState } from "react";
 import { LibraryPicker } from "../components/Library";
 import { FrameJobBar } from "../components/FrameMaker";
-import { makeReferences, useFrameJob } from "../lib/frames";
+import { makeReferences, useFrameJob, useRefErrors } from "../lib/frames";
 import { AssetImg, Button, Card, confirmDialog, cx, Empty, Field, FileButton, IconButton, Input, LockToggle, Pill, SectionTitle, TextArea } from "../components/ui";
 import { uid, pad } from "../lib/ids";
 import { buildVideoPrompt } from "../lib/prompt";
 import type { Character, Location, Project } from "../lib/types";
 import { useStore } from "../store/store";
 
-function RefImages({ p, ids, onAdd, onRemove, kind, onGenerate }: { p: Project; ids: string[]; onAdd: (ids: string[]) => void; onRemove: (id: string) => void; kind: "character" | "location"; onGenerate?: () => void }) {
+function RefImages({ p, ids, onAdd, onRemove, kind, onGenerate, ownerId }: { p: Project; ids: string[]; onAdd: (ids: string[]) => void; onRemove: (id: string) => void; kind: "character" | "location"; onGenerate?: () => void; ownerId?: string }) {
+  const err = useRefErrors((e) => (ownerId ? e[ownerId] : ""));
   const st = useStore.getState();
   const [lib, setLib] = useState(false);
   const job = useFrameJob();
@@ -55,6 +56,7 @@ function RefImages({ p, ids, onAdd, onRemove, kind, onGenerate }: { p: Project; 
         <FileButton size="sm" multiple icon={<Upload className="h-4 w-4" />} onFiles={async (f) => { const a = await st.addImages(f, [kind]); if (a.length) { onAdd(a.map((x) => x.id)); st.toast("Reference added.", "ok"); } }}>Upload</FileButton>
         <Button size="sm" icon={<Images className="h-4 w-4" />} onClick={() => setLib(true)}>From library</Button>
       </div>
+      {err && <p className="text-[12.5px] text-bad mt-2 leading-snug">Couldn't make it: {err}</p>}
       {rest.length > 0 && <p className="text-[11.5px] text-faint mt-2">Click a smaller picture to make it the main look.</p>}
       <LibraryPicker p={p} open={lib} onClose={() => setLib(false)} onPick={(id) => onAdd([id])} title="Choose a reference image" />
     </div>
@@ -164,7 +166,7 @@ export function Characters() {
                   </div>
                   <div className="space-y-5">
                     <div><div className="text-[12.5px] font-medium text-mute mb-2">Reference images</div>
-                      <RefImages p={p} kind="character" ids={sel.refAssetIds} onAdd={(ids) => upd((c) => { c.refAssetIds = ids.length > 1 && ids.every((x) => c.refAssetIds.includes(x) || x === ids[0]) ? Array.from(new Set(ids)) : Array.from(new Set([...c.refAssetIds, ...ids])); })} onRemove={(id) => upd((c) => { c.refAssetIds = c.refAssetIds.filter((x) => x !== id); })} onGenerate={() => makeReferences({ chars: [sel.id], locs: [] })} /></div>
+                      <RefImages p={p} kind="character" ids={sel.refAssetIds} onAdd={(ids) => upd((c) => { c.refAssetIds = ids.length > 1 && ids.every((x) => c.refAssetIds.includes(x) || x === ids[0]) ? Array.from(new Set(ids)) : Array.from(new Set([...c.refAssetIds, ...ids])); })} onRemove={(id) => upd((c) => { c.refAssetIds = c.refAssetIds.filter((x) => x !== id); })} onGenerate={() => makeReferences({ chars: [sel.id], locs: [] })} ownerId={sel.id} /></div>
                     {sample && (
                       <div className="rounded-xl border border-line bg-surface p-3.5">
                         <div className="text-[12px] font-semibold text-mute">In the prompt for Shot {pad(p.shots.indexOf(sample) + 1)}</div>
@@ -259,7 +261,7 @@ export function Locations() {
                       toggle={(sid, on) => st.update((d) => { const s = d.shots.find((x) => x.id === sid)!; if (on) { s.locationId = sel.id; s.locationVariantId = null; s.architectureOverride = ""; } else if (s.locationId === sel.id) { s.locationId = null; s.locationVariantId = null; } })} />
                   </div>
                   <div><div className="text-[12.5px] font-medium text-mute mb-2">Reference images</div>
-                    <RefImages p={p} kind="location" ids={sel.refAssetIds} onAdd={(ids) => upd((l) => { l.refAssetIds = ids.length > 1 && ids.every((x) => l.refAssetIds.includes(x) || x === ids[0]) ? Array.from(new Set(ids)) : Array.from(new Set([...l.refAssetIds, ...ids])); })} onRemove={(id) => upd((l) => { l.refAssetIds = l.refAssetIds.filter((x) => x !== id); })} onGenerate={() => makeReferences({ chars: [], locs: [sel.id] })} /></div>
+                    <RefImages p={p} kind="location" ids={sel.refAssetIds} onAdd={(ids) => upd((l) => { l.refAssetIds = ids.length > 1 && ids.every((x) => l.refAssetIds.includes(x) || x === ids[0]) ? Array.from(new Set(ids)) : Array.from(new Set([...l.refAssetIds, ...ids])); })} onRemove={(id) => upd((l) => { l.refAssetIds = l.refAssetIds.filter((x) => x !== id); })} onGenerate={() => makeReferences({ chars: [], locs: [sel.id] })} ownerId={sel.id} /></div>
                 </div>
               </Card>
             )}
