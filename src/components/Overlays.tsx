@@ -1,8 +1,10 @@
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Pause, Play, RefreshCw, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Loader2, Pause, Play, RefreshCw, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAssetUrls } from "../lib/assets";
-import { fmtDur, pad } from "../lib/ids";
+import { fmtDur, pad, slug } from "../lib/ids";
+import { recordAnimatic, videoFormat } from "../lib/animatic";
+import { download } from "../lib/download";
 import { aspectRatio } from "../lib/options";
 import { cleanUnusedAssets, useStore } from "../store/store";
 import { Button, cx, Field, Input, IconButton, Modal, Pill, Switch } from "./ui";
@@ -30,7 +32,24 @@ export function PreviewOverlay() {
   const [playing, setPlaying] = useState(true);
   const [el, setEl] = useState(0);
   const last = useRef(0);
-  const close = () => useStore.getState().setOverlay(null);
+  const [rec, setRec] = useState<{ done: number; total: number } | null>(null);
+  const [vidOpts, setVidOpts] = useState(false);
+  const [titles, setTitles] = useState(true), [subs, setSubs] = useState(true);
+  const cancelRef = useRef({ cancel: false });
+  const close = () => { cancelRef.current.cancel = true; useStore.getState().setOverlay(null); };
+  const saveVideo = async () => {
+    if (!p) return;
+    setVidOpts(false); setPlaying(false);
+    cancelRef.current = { cancel: false };
+    setRec({ done: 0, total: p.shots.reduce((a, s) => a + s.duration, 0) });
+    try {
+      const { blob, ext } = await recordAnimatic(p, { titles, subtitles: subs, signal: cancelRef.current, onProgress: (done, total) => setRec({ done, total }) });
+      await download(blob, `${slug(p.title)}_ANIMATIC.${ext}`);
+      useStore.getState().toast(`Video saved (${ext.toUpperCase()}) — check your Downloads.`, "ok");
+    } catch (e: any) {
+      if (e?.message !== "cancelled") useStore.getState().toast(e?.message || "Couldn't record the video.", "error");
+    } finally { setRec(null); }
+  };
   useEffect(() => { if (open && p) { const k = p.shots.findIndex((s) => s.id === p.ui.selectedShotId); setI(Math.max(0, k)); setEl(0); setPlaying(true); } }, [open]); // eslint-disable-line
   const shot = p?.shots[i];
   useEffect(() => {
@@ -51,7 +70,7 @@ export function PreviewOverlay() {
   useEffect(() => {
     if (!open) return;
     const k = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); close(); }
+      if (e.key === "Escape") { e.preventDefault(); if (cancelRef.current && !cancelRef.current.cancel && document.querySelector("[data-recording]")) { cancelRef.current.cancel = true; return; } close(); }
       if (e.key === " ") { e.preventDefault(); setPlaying((x) => !x); }
       if (e.key === "ArrowRight" && p) { setI((x) => Math.min(p.shots.length - 1, x + 1)); setEl(0); }
       if (e.key === "ArrowLeft") { setI((x) => Math.max(0, x - 1)); setEl(0); }
@@ -74,8 +93,33 @@ export function PreviewOverlay() {
         <Pill tone="neutral">Animatic preview</Pill>
         <span className="text-[12.5px] text-white/45">Camera moves are simulated on your storyboard images — not generated video.</span>
         <span className="flex-1" />
+        {videoFormat() && (
+          <div className="relative">
+            <Button size="sm" tone="ghost" disabled={!!rec} icon={<Download className="h-4 w-4" />} onClick={() => setVidOpts((v) => !v)}>Download video</Button>
+            {vidOpts && !rec && (
+              <div className="absolute right-0 top-11 z-10 w-[300px] rounded-2xl border border-white/10 bg-[#17171c] p-4 text-[13px] text-white/85 shadow-2xl">
+                <div className="font-semibold text-white">Save this preview as a video</div>
+                <p className="text-white/55 text-[12.5px] mt-1">It plays through once in real time while recording ({fmtDur(total)}). Keep this tab open until it finishes.</p>
+                <label className="flex items-center gap-2 mt-3"><input type="checkbox" checked={titles} onChange={(e) => setTitles(e.target.checked)} /> Shot titles and descriptions</label>
+                <label className="flex items-center gap-2 mt-2"><input type="checkbox" checked={subs} onChange={(e) => setSubs(e.target.checked)} /> Dialogue as subtitles</label>
+                <Button size="sm" tone="primary" className="mt-4 w-full" icon={<Download className="h-4 w-4" />} onClick={saveVideo}>Record and download ({videoFormat()!.ext.toUpperCase()})</Button>
+              </div>
+            )}
+          </div>
+        )}
         <IconButton label="Close preview (Esc)" onClick={close}><X className="h-5 w-5" /></IconButton>
       </div>
+      {rec && (
+        <div data-recording className="absolute inset-0 z-20 bg-black/80 grid place-items-center">
+          <div className="w-[360px] rounded-2xl bg-[#17171c] border border-white/10 p-6 text-center text-white">
+            <Loader2 className="h-7 w-7 animate-spin mx-auto text-amber" />
+            <div className="font-semibold mt-3">Recording your video…</div>
+            <div className="text-white/55 text-[13px] mt-1 tabular-nums">{fmtDur(rec.done)} of {fmtDur(rec.total)} · keep this tab open</div>
+            <div className="h-1.5 rounded-full bg-white/10 mt-4 overflow-hidden"><div className="h-full bg-amber" style={{ width: `${rec.total ? (rec.done / rec.total) * 100 : 0}%` }} /></div>
+            <Button size="sm" tone="ghost" className="mt-4" onClick={() => { cancelRef.current.cancel = true; }}>Cancel</Button>
+          </div>
+        </div>
+      )}
       <div className="flex-1 min-h-0 grid place-items-center px-10">
         <div className="relative overflow-hidden bg-[#0b0b0e] rounded-md shadow-2xl" style={{ aspectRatio: String(aspectRatio(p.aspect)), height: "min(100%, calc((100vw - 80px) / " + aspectRatio(p.aspect) + "))" }}>
           {start ? (
