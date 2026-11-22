@@ -160,7 +160,7 @@ export function missingReferences(p: Project, shotIds?: string[]) {
 }
 
 /** makes portraits / location photos for everything listed (one at a time — free image services allow one at a time) */
-export async function makeReferences(ids: { chars: string[]; locs: string[] }) {
+export async function makeReferences(ids: { chars: string[]; locs: string[] }, offerUpdate = true) {
   const job = useFrameJob.getState(); if (job.running) return;
   const st = useStore.getState(); const p0 = st.project; if (!p0) return;
   const queue = [...ids.chars.map((id) => ({ k: "c" as const, id })), ...ids.locs.map((id) => ({ k: "l" as const, id }))];
@@ -183,7 +183,13 @@ export async function makeReferences(ids: { chars: string[]; locs: string[] }) {
   useFrameJob.setState({ running: false, current: "" });
   const made = j.done - j.failed;
   if (j.failed) st.toast(`Made ${made} of ${j.total} reference pictures. Couldn't make ${j.lastError}`, "error");
-  else st.toast(`${made} reference ${made === 1 ? "picture" : "pictures"} ready — every shot will now use them.`, "ok");
+  else {
+    // offer to redo the shots that show these characters / places, so they pick up the new look
+    const p = useStore.getState().project;
+    const affected = p ? p.shots.filter((s) => s.imageId && (s.characters.some((x) => ids.chars.includes(x.characterId)) || (s.locationId && ids.locs.includes(s.locationId)))).map((s) => s.id) : [];
+    if (affected.length && offerUpdate) st.toast(`${made} new reference ${made === 1 ? "picture" : "pictures"} ready. ${affected.length} ${affected.length === 1 ? "shot still shows" : "shots still show"} the old look.`, "ok", { label: `Update ${affected.length} ${affected.length === 1 ? "shot" : "shots"}`, run: () => makeFrames("photo", affected) });
+    else st.toast(`${made} reference ${made === 1 ? "picture" : "pictures"} ready — every new shot will use them.`, "ok");
+  }
   return j.failed === 0;
 }
 
@@ -231,7 +237,7 @@ export async function makeFrames(mode: FrameMode, shotIds?: string[]) {
     const miss = missingReferences(p0, ids);
     if (miss.chars.length || miss.locs.length) {
       st.toast(`First making ${miss.chars.length ? `${miss.chars.length} character portrait${miss.chars.length > 1 ? "s" : ""}` : ""}${miss.chars.length && miss.locs.length ? " and " : ""}${miss.locs.length ? `${miss.locs.length} location photo${miss.locs.length > 1 ? "s" : ""}` : ""} so every shot looks consistent…`, "info");
-      await makeReferences({ chars: miss.chars.map((c) => c.id), locs: miss.locs.map((l) => l.id) });
+      await makeReferences({ chars: miss.chars.map((c) => c.id), locs: miss.locs.map((l) => l.id) }, false);
       if (useFrameJob.getState().cancel) return;
     }
   }
