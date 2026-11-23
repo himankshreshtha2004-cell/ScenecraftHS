@@ -17,7 +17,7 @@ export default function Welcome() {
   return (
     <div className="relative h-full w-full overflow-hidden bg-bg">
       {/* filmstrip */}
-      <div className="absolute inset-y-0 right-0 w-[58%] overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_28%,black_80%,transparent)]" aria-hidden>
+      <div className="absolute inset-y-0 right-0 w-full md:w-[58%] opacity-25 md:opacity-100 overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_28%,black_80%,transparent)]" aria-hidden>
         <div className="absolute left-0 top-1/2 -translate-y-1/2 -rotate-[8deg] space-y-6 w-[5800px] origin-left">
           {[0, 1, 2].map((row) => (
             <div key={row} className="relative">
@@ -34,7 +34,7 @@ export default function Welcome() {
             </div>
           ))}
         </div>
-        <span className="absolute bottom-6 right-8 text-[11px] uppercase tracking-[.16em] text-faint">Illustrations from the sample film</span>
+        <span className="hidden md:block absolute bottom-6 right-8 text-[11px] uppercase tracking-[.16em] text-faint">Illustrations from the sample film</span>
       </div>
       <div className="absolute inset-0 bg-[radial-gradient(70%_80%_at_20%_50%,rgba(16,17,22,.96)_35%,rgba(16,17,22,.4)_75%,transparent)]" />
       <div className="film-grain" />

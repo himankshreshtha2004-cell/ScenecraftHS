@@ -1,13 +1,13 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, ArrowRightLeft, Camera, Check, CheckCircle2, ChevronLeft, ChevronRight, CircleAlert, Copy, Download, FileText, Grid3x3, History, Images, Link2,
-  Loader2, PenTool, RotateCcw, Save, Sparkles, Star, Trash2, Upload, Wand2, X,
+  Loader2, PenTool, RotateCcw, Save, Sparkles, Star, Trash2, Upload, Wand2, X, SlidersHorizontal,
 } from "lucide-react";
 import { useState } from "react";
 import { create } from "zustand";
 import { LibraryPicker } from "../components/Library";
 import ShotInspector, { StatusPill } from "../components/ShotInspector";
-import { AssetImg, Button, Card, cx, DropSlot, Field, FileButton, IconButton, Input, Pill, Progress, Segmented, Select, TextArea } from "../components/ui";
+import { AssetImg, Button, Card, cx, DropSlot, Field, FileButton, IconButton, Input, Pill, Progress, Segmented, Select, TextArea, useMobile, useMobileSheet, MobileSheet } from "../components/ui";
 import { assistPrompt, generateImage, type PromptSuggestion } from "../lib/ai";
 import { makeFrames, useFrameJob } from "../lib/frames";
 import { costPerAttempt, readiness, shotIssues, type Issue } from "../lib/checks";
@@ -33,16 +33,17 @@ export default function ShotEditor() {
   const idx = p.shots.indexOf(shot);
   const r = readiness(p, shot);
   const go = (d: number) => { const n = p.shots[idx + d]; if (n) st.setUI({ selectedShotId: n.id }); };
+  const mobile = useMobile(); const sheet = useMobileSheet((m) => m.open);
 
   return (
     <div className="flex h-full min-h-0">
       <div className="flex-1 min-w-0 flex flex-col min-h-0">
-        <div className="h-14 shrink-0 flex items-center gap-3 px-6 border-b border-line">
-          <Button tone="ghost" size="sm" icon={<ArrowLeft className="h-4 w-4" />} onClick={() => st.go("storyboard")}>Storyboard</Button>
-          <span className="text-faint">/</span>
+        <div className="min-h-14 shrink-0 flex flex-wrap items-center gap-2 md:gap-3 px-3 md:px-6 py-2 md:py-0 border-b border-line">
+          <Button tone="ghost" size="sm" icon={<ArrowLeft className="h-4 w-4" />} onClick={() => st.go("storyboard")}><span className="hidden sm:inline">Storyboard</span></Button>
+          <span className="text-faint hidden sm:inline">/</span>
           <span className="font-serif text-[22px] leading-none">{pad(idx + 1)}</span>
           <span className="text-[15px] font-semibold truncate min-w-[60px] flex-1">{shot.title}</span>
-          <span className="shrink-0"><StatusPill status={shot.status} /></span>
+          <span className="shrink-0 hidden sm:inline"><StatusPill status={shot.status} /></span>
           <IconButton label="Previous shot" disabled={idx === 0} onClick={() => go(-1)}><ChevronLeft className="h-4 w-4" /></IconButton>
           <IconButton label="Next shot" disabled={idx === p.shots.length - 1} onClick={() => go(1)}><ChevronRight className="h-4 w-4" /></IconButton>
           <button onClick={() => setTab("check")} className={cx("shrink-0 inline-flex items-center gap-2 h-8 px-3 rounded-lg text-[12.5px] font-semibold", r.ready ? "bg-ok-soft text-ok" : "bg-warn-soft text-warn")}>
@@ -52,7 +53,12 @@ export default function ShotEditor() {
             ? <Button tone="ok" size="sm" icon={<Check className="h-4 w-4" />} onClick={() => setStatus(shot.id, "review")} title="Approved — click to move back to review">Approved</Button>
             : <Button tone="primary" size="sm" icon={<Check className="h-4 w-4" />} onClick={() => { setStatus(shot.id, "approved"); st.toast(`Shot ${pad(idx + 1)} approved.`, "ok"); }}>Approve shot</Button>}
         </div>
-        <div className="px-6 pt-4 shrink-0">
+        {mobile && (
+          <div className="px-3 pt-3 shrink-0">
+            <Button size="sm" className="w-full" icon={<SlidersHorizontal className="h-4 w-4" />} onClick={() => useMobileSheet.setState({ open: true })}>Shot details — camera, look, who & where</Button>
+          </div>
+        )}
+        <div className="px-3 md:px-6 pt-3 md:pt-4 shrink-0 overflow-x-auto thin-scroll">
           <Segmented value={tab} onChange={setTab} options={[
             { value: "preview", label: <><Images className="h-4 w-4" />Storyboard image</> },
             { value: "frames", label: <><ArrowRightLeft className="h-4 w-4" />Frame planner</> },
@@ -62,7 +68,7 @@ export default function ShotEditor() {
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
           <AnimatePresence mode="wait">
-            <motion.div key={tab + shot.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="px-6 py-5">
+            <motion.div key={tab + shot.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="px-3 md:px-6 py-4 md:py-5">
               {tab === "preview" && <PreviewTab p={p} s={shot} />}
               {tab === "frames" && <FramesTab p={p} s={shot} />}
               {tab === "prompt" && <PromptTab p={p} s={shot} />}
@@ -71,7 +77,12 @@ export default function ShotEditor() {
           </AnimatePresence>
         </div>
       </div>
-      <ShotInspector key={shot.id} shot={shot} inEditor />
+      {!mobile && <ShotInspector key={shot.id} shot={shot} inEditor />}
+      {mobile && sheet && (
+        <MobileSheet onClose={() => useMobileSheet.setState({ open: false })}>
+          <ShotInspector key={shot.id} shot={shot} onClose={() => useMobileSheet.setState({ open: false })} />
+        </MobileSheet>
+      )}
     </div>
   );
 }
@@ -100,7 +111,7 @@ function PreviewTab({ p, s }: { p: Project; s: Shot }) {
       {compare ? (
         <div>
           <div className="flex items-center justify-between mb-3"><div className="text-sm font-semibold">Compare versions</div><Button size="sm" tone="ghost" icon={<X className="h-4 w-4" />} onClick={() => setCompare(null)}>Close compare</Button></div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {compare.map((id, k) => (
               <div key={k}>
                 <Select value={id} onChange={(v) => setCompare((c) => (c ? (k ? [c[0], v] : [v, c[1]]) as [string, string] : c))} options={s.imageIds.map((x, i) => ({ value: x, label: `Version ${i + 1}${x === s.imageId ? " (preferred)" : ""}` }))} className="mb-2" />
@@ -120,7 +131,7 @@ function PreviewTab({ p, s }: { p: Project; s: Shot }) {
         <div className="text-[13px] font-semibold mr-2">Versions <span className="text-faint font-normal">{s.imageIds.length}</span></div>
         {s.imageIds.map((id, i) => (
           <div key={id} className="relative group">
-            <button onClick={() => pickVersion(id)} aria-label={`Use version ${i + 1}`} className={cx("block w-[120px] rounded-lg overflow-hidden ring-2 transition", id === s.imageId ? "ring-amber" : "ring-transparent hover:ring-line")}>
+            <button onClick={() => pickVersion(id)} aria-label={`Use version ${i + 1}`} className={cx("block w-[96px] sm:w-[120px] rounded-lg overflow-hidden ring-2 transition", id === s.imageId ? "ring-amber" : "ring-transparent hover:ring-line")}>
               <AssetImg id={id} assets={p.assets} aspect={p.aspect} rounded="rounded-none" label={false} />
             </button>
             {id === s.imageId && <Star className="absolute left-1.5 top-1.5 h-3.5 w-3.5 text-amber fill-amber drop-shadow" />}
@@ -207,7 +218,7 @@ function FramesTab({ p, s }: { p: Project; s: Shot }) {
       </div>
 
       {mode === "side" ? (
-        <div className="grid grid-cols-[1fr_auto_1fr] gap-4 mt-4 items-start relative">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-4 mt-4 items-start relative">
           <FrameSlot p={p} s={s} which="start" grid={grid} />
           <div className="pt-[22%] text-faint flex flex-col items-center gap-1"><ChevronRight className="h-6 w-6" /><span className="text-[11px] tabular-nums">{s.duration}s</span></div>
           <FrameSlot p={p} s={s} which="end" grid={grid} />
@@ -225,7 +236,7 @@ function FramesTab({ p, s }: { p: Project; s: Shot }) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-5 mt-7">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-7">
         <Field label="Motion — what connects the two frames?" hint="This text is added to the video prompt.">
           <TextArea minRows={3} value={s.motion} onChange={(e) => updateShot(s.id, (x) => { x.motion = e.target.value; }, "motion")} placeholder="She turns from the window toward the door as the camera pushes in." />
         </Field>
@@ -285,7 +296,7 @@ function PromptTab({ p, s }: { p: Project; s: Shot }) {
   };
 
   return (
-    <div className="max-w-[1100px] mx-auto grid grid-cols-[1fr_300px] gap-6">
+    <div className="max-w-[1100px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <h2 className="text-[19px] font-semibold flex-1">Video generation prompt</h2>
@@ -388,7 +399,7 @@ export function IssueRow({ i, compact }: { i: Issue; compact?: boolean }) {
           {i.acknowledged ? (
             <div className="flex items-center gap-3 mt-2 text-[12.5px]"><span className="text-faint">Marked as intentional</span><button className="text-amber hover:underline" onClick={() => acknowledge(i.shotId, i.id, false)}>Undo</button></div>
           ) : (
-            <div className="flex gap-2 mt-2.5">
+            <div className="flex flex-wrap gap-2 mt-2.5">
               <Button size="sm" tone="primary" onClick={() => applyFix(i.shotId, i.fix)}>{i.fixLabel}</Button>
               <Button size="sm" tone="subtle" onClick={() => acknowledge(i.shotId, i.id)}>{i.keepLabel}</Button>
             </div>

@@ -98,17 +98,17 @@ export function Characters() {
 
   return (
     <div className="h-full overflow-y-auto thin-scroll">
-      <div className="max-w-[1320px] mx-auto px-8 py-7">
+      <div className="max-w-[1320px] mx-auto px-4 md:px-8 py-7">
         <SectionTitle eyebrow="Character DNA" title="Characters" sub="Describe each character once. With Character Lock on, their appearance and locked outfit are written into every shot prompt they appear in — and any shot that drifts is flagged."
-          right={<div className="flex gap-2">
+          right={<div className="flex flex-wrap gap-2">
             {ai.image && p.characters.some((c) => !c.refAssetIds.length) && <Button tone="ai" disabled={job.running} icon={<Camera className="h-4 w-4" />} onClick={() => makeReferences({ chars: p.characters.filter((c) => !c.refAssetIds.length).map((c) => c.id), locs: [] })}>Make all portraits ({p.characters.filter((c) => !c.refAssetIds.length).length})</Button>}
             <Button tone="primary" icon={<Plus className="h-4 w-4" />} onClick={add}>New character</Button></div>} />
         <div className="mt-5"><FrameJobBar /></div>
         {!p.characters.length ? (
           <Empty icon={<Users className="h-6 w-6" />} title="No characters yet" body="Create the people in your film so they look the same in every shot." action={<Button tone="primary" onClick={add} icon={<Plus className="h-4 w-4" />}>Create a character</Button>} />
         ) : (
-          <div className="grid grid-cols-[280px_1fr] gap-6 mt-7 items-start">
-            <div className="space-y-2.5 sticky top-0">
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 mt-7 items-start">
+            <div className="space-y-2.5 lg:sticky lg:top-0">
               {p.characters.map((c) => (
                 <button key={c.id} onClick={() => st.setUI({ selectedCharacterId: c.id })} className={cx("w-full flex items-center gap-3 rounded-2xl border p-2.5 text-left transition-colors", sel?.id === c.id ? "border-amber bg-white/[.04]" : "border-line bg-surface hover:border-[#4a4e5d]")}>
                   <AssetImg id={c.refAssetIds[0]} assets={p.assets} aspect="3:4" className="w-14 rounded-xl shrink-0" label={false}>{!c.refAssetIds[0] && <User className="absolute inset-0 m-auto h-6 w-6 text-faint" />}</AssetImg>
@@ -118,13 +118,13 @@ export function Characters() {
               ))}
             </div>
             {sel && (
-              <Card className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="flex-1 min-w-0 grid grid-cols-2 gap-4">
+              <Card className="p-4 md:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                  <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Field label="Name"><Input value={sel.name} onChange={(e) => upd((c) => { c.name = e.target.value; }, "name")} /></Field>
                     <Field label="Role"><Input value={sel.role} placeholder="e.g. Lead — former detective" onChange={(e) => upd((c) => { c.role = e.target.value; }, "role")} /></Field>
                   </div>
-                  <div className="pt-6 flex items-center gap-2">
+                  <div className="sm:pt-6 flex items-center gap-2">
                     <LockToggle kind="Character" locked={sel.locked} onChange={(v) => { upd((c) => { c.locked = v; }); st.toast(v ? `${sel.name}'s look is locked into every prompt.` : `${sel.name} unlocked.`, "ok"); }} />
                     <IconButton label="Delete character" onClick={async () => {
                       if (await confirmDialog({ title: `Delete ${sel.name}?`, body: `${sel.name} will be removed from ${usedIn(sel).length} shots. You can undo this.`, ok: "Delete", danger: true }))
@@ -132,7 +132,7 @@ export function Characters() {
                     }}><Trash2 className="h-4 w-4" /></IconButton>
                   </div>
                 </div>
-                <div className="grid grid-cols-[1fr_300px] gap-7 mt-6">
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-7 mt-6">
                   <div className="space-y-4">
                     <Field label="Appearance" hint="Age, build, presence — how you'd describe them to a casting director."><TextArea minRows={2} value={sel.description} onChange={(e) => upd((c) => { c.description = e.target.value; }, "desc")} placeholder="Young woman with a guarded, watchful presence" /></Field>
                     <div className="grid grid-cols-2 gap-4">
@@ -148,8 +148,8 @@ export function Characters() {
                           const isLocked = w.id === sel.lockedWardrobeId;
                           return (
                             <div key={w.id} className={cx("rounded-xl border p-3", isLocked ? "border-ok/40 bg-ok-soft/40" : "border-line bg-surface")}>
-                              <div className="flex items-center gap-2">
-                                <Input value={w.name} onChange={(e) => upd((c) => { const x = c.wardrobes.find((y) => y.id === w.id); if (x) x.name = e.target.value; }, "wn" + w.id)} className="!h-9 !w-56" aria-label="Outfit name" />
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Input value={w.name} onChange={(e) => upd((c) => { const x = c.wardrobes.find((y) => y.id === w.id); if (x) x.name = e.target.value; }, "wn" + w.id)} className="!h-9 !w-full sm:!w-56" aria-label="Outfit name" />
                                 {isLocked ? <Pill tone="ok">Locked look</Pill> : <Button size="sm" tone="ghost" onClick={() => upd((c) => { c.lockedWardrobeId = w.id; })}>Make locked look</Button>}
                                 <span className="flex-1" />
                                 {!isLocked && <IconButton label="Delete outfit" className="h-8 w-8" onClick={() => upd((c, d) => { c.wardrobes = c.wardrobes.filter((y) => y.id !== w.id); d.shots.forEach((s) => s.characters.forEach((x) => { if (x.characterId === c.id && x.wardrobeId === w.id) x.wardrobeId = c.lockedWardrobeId; })); })}><Trash2 className="h-3.5 w-3.5" /></IconButton>}
@@ -198,16 +198,16 @@ export function Locations() {
   const usedIn = (l: Location) => p.shots.filter((s) => s.locationId === l.id);
   return (
     <div className="h-full overflow-y-auto thin-scroll">
-      <div className="max-w-[1320px] mx-auto px-8 py-7">
+      <div className="max-w-[1320px] mx-auto px-4 md:px-8 py-7">
         <SectionTitle eyebrow="World DNA" title="Locations" sub="Define each place once — its architecture, key objects and materials. With Location Lock on, those details stay identical in every shot set there."
-          right={<div className="flex gap-2">
+          right={<div className="flex flex-wrap gap-2">
             {ai.image && p.locations.some((l) => !l.refAssetIds.length) && <Button tone="ai" disabled={job.running} icon={<Camera className="h-4 w-4" />} onClick={() => makeReferences({ chars: [], locs: p.locations.filter((l) => !l.refAssetIds.length).map((l) => l.id) })}>Make all location photos ({p.locations.filter((l) => !l.refAssetIds.length).length})</Button>}
             <Button tone="primary" icon={<Plus className="h-4 w-4" />} onClick={add}>New location</Button></div>} />
         <div className="mt-5"><FrameJobBar /></div>
         {!p.locations.length ? (
           <Empty icon={<MapPin className="h-6 w-6" />} title="No locations yet" body="Add the places your film happens in." action={<Button tone="primary" onClick={add} icon={<Plus className="h-4 w-4" />}>Create a location</Button>} />
         ) : (
-          <div className="grid grid-cols-[300px_1fr] gap-6 mt-7 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 mt-7 items-start">
             <div className="space-y-2.5">
               {p.locations.map((l) => (
                 <button key={l.id} onClick={() => st.setUI({ selectedLocationId: l.id })} className={cx("w-full rounded-2xl border p-2.5 text-left transition-colors", sel?.id === l.id ? "border-amber bg-white/[.04]" : "border-line bg-surface hover:border-[#4a4e5d]")}>
@@ -218,10 +218,10 @@ export function Locations() {
               ))}
             </div>
             {sel && (
-              <Card className="p-6">
-                <div className="flex items-start gap-4">
+              <Card className="p-4 md:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
                   <Field label="Location name" className="flex-1"><Input value={sel.name} onChange={(e) => upd((l) => { l.name = e.target.value; }, "name")} /></Field>
-                  <div className="pt-6 flex items-center gap-2">
+                  <div className="sm:pt-6 flex items-center gap-2">
                     <LockToggle kind="Location" locked={sel.locked} onChange={(v) => { upd((l) => { l.locked = v; }); st.toast(v ? `${sel.name} is locked into every prompt set there.` : `${sel.name} unlocked.`, "ok"); }} />
                     <IconButton label="Delete location" onClick={async () => {
                       if (await confirmDialog({ title: `Delete ${sel.name}?`, body: `${usedIn(sel).length} shots use it and will have no location. You can undo this.`, ok: "Delete", danger: true }))
@@ -229,12 +229,12 @@ export function Locations() {
                     }}><Trash2 className="h-4 w-4" /></IconButton>
                   </div>
                 </div>
-                <div className="grid grid-cols-[1fr_340px] gap-7 mt-5">
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-7 mt-5">
                   <div className="space-y-4">
                     <Field label="Environment description"><TextArea minRows={2} value={sel.description} onChange={(e) => upd((l) => { l.description = e.target.value; }, "desc")} placeholder="A narrow street with neon shop signs and wet roads" /></Field>
                     <Field label="Architectural style"><TextArea minRows={2} value={sel.architecture} onChange={(e) => upd((l) => { l.architecture = e.target.value; }, "arch")} placeholder="Old four-storey brick buildings with iron fire escapes" /></Field>
                     <Field label="Important background objects"><Input value={sel.objects} onChange={(e) => upd((l) => { l.objects = e.target.value; }, "obj")} placeholder="A pink noodle-bar sign, parked scooters" /></Field>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <Field label="Materials"><TextArea minRows={2} value={sel.materials} onChange={(e) => upd((l) => { l.materials = e.target.value; }, "mat")} placeholder="Brick, wet asphalt" /></Field>
                       <Field label="Colour palette"><TextArea minRows={2} value={sel.palette} onChange={(e) => upd((l) => { l.palette = e.target.value; }, "pal")} placeholder="Navy, amber, neon" /></Field>
                       <Field label="Lighting"><TextArea minRows={2} value={sel.lighting} onChange={(e) => upd((l) => { l.lighting = e.target.value; }, "lig")} placeholder="Warm windows" /></Field>

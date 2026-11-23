@@ -59,10 +59,10 @@ export function Studio() {
   const cont = recent.find((m) => m.id === last) ?? recent[0];
   const hasSample = metas.some((m) => m.isSample);
   return (
-    <div className="max-w-[1320px] mx-auto px-10 py-10">
+    <div className="max-w-[1320px] mx-auto px-4 md:px-10 py-10">
       <div className="text-[12px] font-semibold uppercase tracking-[.2em] text-faint">My Studio</div>
-      <h1 className="font-serif text-[52px] leading-none mt-2">What are we making today?</h1>
-      <div className="grid grid-cols-[1.35fr_1fr] gap-6 mt-9">
+      <h1 className="font-serif text-[36px] md:text-[52px] leading-none mt-2">What are we making today?</h1>
+      <div className="grid grid-cols-1 lg:grid-cols-[1.35fr_1fr] gap-6 mt-9">
         {cont ? (
           <div>
             <div className="text-[13px] font-medium text-mute mb-3">Continue where you left off</div>
@@ -104,7 +104,7 @@ export function Studio() {
             <h2 className="text-[17px] font-semibold">Recent films</h2>
             <Button tone="ghost" size="sm" onClick={() => st.go("projects")}>All projects<ArrowRight className="h-4 w-4" /></Button>
           </div>
-          <div className="grid grid-cols-3 gap-5">{recent.filter((m) => m.id !== cont?.id).slice(0, 3).map((m) => <ProjectCard key={m.id} m={m} />)}</div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">{recent.filter((m) => m.id !== cont?.id).slice(0, 3).map((m) => <ProjectCard key={m.id} m={m} />)}</div>
         </div>
       )}
     </div>
@@ -122,19 +122,19 @@ export function Projects() {
     return l.sort((a, b) => sort === "title" ? a.title.localeCompare(b.title) : sort === "ready" ? b.readiness - a.readiness : b.updatedAt - a.updatedAt);
   }, [metas, q, sort]);
   return (
-    <div className="max-w-[1320px] mx-auto px-10 py-10">
+    <div className="max-w-[1320px] mx-auto px-4 md:px-10 py-10">
       <div className="flex items-end justify-between gap-6 flex-wrap">
         <div>
           <div className="text-[12px] font-semibold uppercase tracking-[.2em] text-faint">Projects</div>
           <h1 className="font-serif text-[48px] leading-none mt-2">All films <span className="text-faint">{metas.length}</span></h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <FileButton accept=".json,application/json" icon={<Upload className="h-4 w-4" />} onFiles={async (f) => { try { await st.importBackup(f[0]); } catch (e: any) { st.toast(e.message, "error"); } }}>Import backup</FileButton>
           <Button tone="primary" icon={<Plus className="h-4 w-4" />} onClick={() => st.setScreen("new")}>New film</Button>
         </div>
       </div>
-      <div className="flex items-center gap-3 mt-8">
-        <div className="relative w-[320px]">
+      <div className="flex flex-wrap items-center gap-3 mt-8">
+        <div className="relative w-full sm:w-[320px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-faint" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by title or genre" className="pl-9" aria-label="Search projects" />
         </div>
@@ -142,7 +142,7 @@ export function Projects() {
         {!metas.some((m) => m.isSample) && <Button tone="ai" size="md" icon={<Sparkles className="h-4 w-4" />} onClick={() => st.createSample()} className="ml-auto">Open sample film</Button>}
       </div>
       {list.length ? (
-        <div className="grid grid-cols-3 gap-5 mt-6">{list.map((m) => <ProjectCard key={m.id} m={m} />)}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-6">{list.map((m) => <ProjectCard key={m.id} m={m} />)}</div>
       ) : (
         <Empty icon={<Clapperboard className="h-6 w-6" />} title={metas.length ? "No films match your search" : "No films yet"} body={metas.length ? "Try a different word." : "Start a new film or open the sample to explore."}
           action={!metas.length && <Button tone="primary" onClick={() => st.setScreen("new")}>Start a new film</Button>} />

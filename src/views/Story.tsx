@@ -13,15 +13,15 @@ export default function Story() {
   const sty = (k: keyof StyleProfile, v: any, key?: string) => set((d) => { (d.style as any)[k] = v; }, key);
   return (
     <div className="h-full overflow-y-auto thin-scroll">
-      <div className="max-w-[1180px] mx-auto px-8 py-7">
+      <div className="max-w-[1180px] mx-auto px-4 md:px-8 py-7">
         <SectionTitle eyebrow="Story" title="The film" sub="The concept, structure and overall look. Everything here feeds the shot prompts." />
-        <div className="grid grid-cols-[1fr_380px] gap-6 mt-7 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 mt-7 items-start">
           <div className="space-y-6">
             <Card className="p-6 space-y-4">
               <Field label="Title"><Input value={p.title} onChange={(e) => set((d) => { d.title = e.target.value; }, "title")} className="!text-[18px] !h-12 font-serif" /></Field>
               <Field label="Concept" hint="What the film is about, in a few sentences."><TextArea minRows={3} value={p.concept} onChange={(e) => set((d) => { d.concept = e.target.value; }, "concept")} /></Field>
               <Field label="Logline" hint="One sentence that sells it."><TextArea minRows={1} value={p.logline} onChange={(e) => set((d) => { d.logline = e.target.value; }, "logline")} placeholder="One voice message pulls a retired detective back into the case she left behind." /></Field>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Field label="Genre"><Select value={GENRES.includes(p.genre) ? p.genre : "__c"} onChange={(v) => v !== "__c" && set((d) => { d.genre = v; })} options={[...GENRES, ...(GENRES.includes(p.genre) ? [] : [{ value: "__c", label: p.genre }])]} /></Field>
                 <Field label="Film style"><Select value={FILM_STYLES.includes(p.filmStyle) ? p.filmStyle : "__c"} onChange={(v) => v !== "__c" && set((d) => { d.filmStyle = v; })} options={[...FILM_STYLES, ...(FILM_STYLES.includes(p.filmStyle) ? [] : [{ value: "__c", label: p.filmStyle }])]} /></Field>
                 <Field label="Target length (s)"><Input type="number" min={5} max={600} value={p.targetDuration} onChange={(e) => set((d) => { d.targetDuration = Math.max(5, Number(e.target.value) || 30); }, "tdur")} /></Field>

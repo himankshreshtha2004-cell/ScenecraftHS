@@ -39,7 +39,7 @@ export default function ShotInspector({ shot, onClose, inEditor }: { shot: Shot;
   const hint = (list: { value: string; hint?: string }[], v: string) => list.find((o) => o.value === v)?.hint;
 
   return (
-    <aside aria-label="Shot inspector" className="w-[340px] shrink-0 border-l border-line bg-bg flex flex-col min-h-0">
+    <aside aria-label="Shot inspector" className="w-full md:w-[340px] shrink-0 md:border-l border-line bg-bg flex flex-col min-h-0 h-full md:h-auto">
       <div className="flex items-center gap-2 px-4 h-14 border-b border-line shrink-0">
         <div className="flex-1 min-w-0">
           <div className="text-[11px] font-semibold uppercase tracking-[.14em] text-faint">Shot {pad(idx + 1)} of {pad(p.shots.length)}</div>

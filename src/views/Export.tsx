@@ -50,8 +50,8 @@ export default function Export() {
 
   return (
     <div className="h-full overflow-y-auto thin-scroll">
-      <div className="max-w-[1180px] mx-auto px-8 py-8">
-        <div className="grid grid-cols-[1.1fr_1fr] gap-8 items-stretch">
+      <div className="max-w-[1180px] mx-auto px-4 md:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-8 items-stretch">
           <div className="relative rounded-3xl overflow-hidden min-h-[360px] border border-line">
             <AssetImg id={cover} assets={p.assets} className="absolute inset-0 !rounded-none" rounded="rounded-none" />
             <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/50 to-transparent" />
@@ -84,7 +84,7 @@ export default function Export() {
           </div>
         )}
 
-        <div className="grid grid-cols-[1fr_360px] gap-6 mt-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 mt-6 items-start">
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <h2 className="text-[16px] font-semibold">What's in the kit</h2>
@@ -99,7 +99,7 @@ export default function Export() {
               ))}
             </div>
             {o.approvedOnly && approved === 0 && <p className="text-[12.5px] text-warn mt-3">No shots are approved yet, so the kit would have no shots.</p>}
-            <div className="flex items-center gap-3 mt-6">
+            <div className="flex flex-wrap items-center gap-3 mt-6">
               <Button tone="primary" size="lg" disabled={!!busy || (o.approvedOnly && approved === 0)} onClick={run} icon={busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}>{busy ? `${busy}…` : "Download Production Kit"}</Button>
               <Button tone="ghost" size="lg" icon={<ArrowLeft className="h-4 w-4" />} onClick={() => st.go("storyboard")}>Return to Storyboard</Button>
             </div>

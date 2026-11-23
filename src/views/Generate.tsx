@@ -47,7 +47,7 @@ export default function Generate() {
 
   return (
     <div className="h-full overflow-y-auto thin-scroll">
-      <div className="max-w-[1320px] mx-auto px-8 py-7">
+      <div className="max-w-[1320px] mx-auto px-4 md:px-8 py-7">
         <div className="flex items-end gap-6 flex-wrap">
           <div className="flex-1 min-w-[320px]">
             <div className="text-[12px] font-semibold uppercase tracking-[.18em] text-faint">Generate</div>
@@ -59,10 +59,10 @@ export default function Generate() {
             <Progress value={p.shots.length ? done / p.shots.length : 0} tone={done === p.shots.length && done > 0 ? "ok" : "amber"} />
           </div>
         </div>
-        <div className="flex items-center gap-3 mt-6">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-6">
           <span className="text-[13px] text-mute">Prompts for</span>
           <Segmented value={target} onChange={(v: PromptTarget) => st.setUI({ promptTarget: v })} options={TARGETS.map((t) => ({ value: t.value, label: t.label }))} />
-          <span className="text-[12.5px] text-faint">{T.hint}</span>
+          <span className="text-[12.5px] text-faint hidden md:inline">{T.hint}</span>
           <span className="flex-1" />
           <Button size="sm" icon={<Copy className="h-4 w-4" />} onClick={async () => {
             await copyText(p.shots.map((x, k) => `SHOT ${pad(k + 1)} — ${x.title.toUpperCase()} (${x.duration}s)\n${formatPrompt(p, x, target)}`).join("\n\n────────\n\n"));
@@ -70,7 +70,7 @@ export default function Generate() {
           }}>Copy all</Button>
         </div>
 
-        <div className="grid grid-cols-[230px_1fr] gap-6 mt-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[230px_1fr] gap-6 mt-6 items-start">
           <nav aria-label="Shots" className="space-y-1.5 sticky top-0">
             {p.shots.map((x, k) => (
               <button key={x.id} onClick={() => st.setUI({ selectedShotId: x.id })} className={cx("w-full flex items-center gap-2.5 rounded-xl p-2 text-left border transition-colors", x.id === s.id ? "border-amber bg-white/[.04]" : "border-transparent hover:bg-white/[.03]")}>
@@ -89,7 +89,7 @@ export default function Generate() {
               {s.generated && <Pill tone="ok"><Check className="h-3 w-3" />Generated</Pill>}
             </div>
 
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] gap-5">
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] gap-5">
               <Card className="p-5">
                 <Step n={1} title="Start frame" sub={start ? "Upload this as the image to animate." : "Make a still first — video tools follow a start image much more closely than text alone."} />
                 {start ? (

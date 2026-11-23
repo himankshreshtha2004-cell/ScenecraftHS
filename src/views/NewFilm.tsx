@@ -70,7 +70,7 @@ export default function NewFilm() {
 
   return (
     <div className="h-full overflow-y-auto thin-scroll">
-      <div className="max-w-[920px] mx-auto px-8 py-8">
+      <div className="max-w-[920px] mx-auto px-4 md:px-8 py-8">
         <div className="flex items-center justify-between">
           <Button tone="ghost" icon={<ArrowLeft className="h-4 w-4" />} onClick={() => st.metas.length ? st.go("studio") : st.setScreen("welcome")}>Back</Button>
           <Logo size={26} />
@@ -164,7 +164,7 @@ export default function NewFilm() {
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[150px_1fr] gap-6 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-[150px_1fr] gap-6 items-start">
       <div className="pt-2 text-[13.5px] font-semibold text-ink/90">{label}</div>
       <div>{children}</div>
     </div>

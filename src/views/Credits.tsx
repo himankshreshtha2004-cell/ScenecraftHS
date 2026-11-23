@@ -33,9 +33,9 @@ export default function Credits() {
 
   return (
     <div className="h-full overflow-y-auto thin-scroll">
-      <div className="max-w-[1240px] mx-auto px-8 py-7">
+      <div className="max-w-[1240px] mx-auto px-4 md:px-8 py-7">
         <SectionTitle eyebrow="Credit Planner" title="Estimate before you generate" sub="Work out roughly how many video-generation credits this film could take, and how much planning might save. All prices are numbers you enter." />
-        <div className="grid grid-cols-[380px_1fr] gap-6 mt-7 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 mt-7 items-start">
           <Card className="p-6 space-y-4">
             <Field label="Video generation provider"><Input value={c.provider} onChange={(e) => set({ provider: e.target.value }, "prov")} placeholder="e.g. Higgsfield" /></Field>
             <Field label="Model or pricing preset">
@@ -83,7 +83,7 @@ export default function Credits() {
               </ul>
             </Card>
 
-            <Card className="overflow-hidden">
+            <Card className="overflow-x-auto">
               <table className="w-full text-[13px]">
                 <thead className="text-faint text-left"><tr className="border-b border-line">{["Shot", "Length", "Generations", "Per attempt", "With planning"].map((h) => <th key={h} className="font-medium px-4 py-3">{h}</th>)}</tr></thead>
                 <tbody>

@@ -88,16 +88,16 @@ export function PreviewOverlay() {
   const before = p.shots.slice(0, i).reduce((a, s) => a + s.duration, 0);
   return (
     <div className="fixed inset-0 z-[85] bg-black flex flex-col" role="dialog" aria-label="Storyboard preview">
-      <div className="flex items-center gap-3 px-5 h-14 text-white/80">
-        <span className="font-serif text-[22px] text-white">{p.title}</span>
-        <Pill tone="neutral">Animatic preview</Pill>
-        <span className="text-[12.5px] text-white/45">Camera moves are simulated on your storyboard images — not generated video.</span>
+      <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 h-14 text-white/80">
+        <span className="font-serif text-[19px] md:text-[22px] text-white truncate min-w-0">{p.title}</span>
+        <span className="hidden sm:inline-flex"><Pill tone="neutral">Animatic preview</Pill></span>
+        <span className="hidden lg:inline text-[12.5px] text-white/45">Camera moves are simulated on your storyboard images — not generated video.</span>
         <span className="flex-1" />
         {videoFormat() && (
           <div className="relative">
-            <Button size="sm" tone="ghost" disabled={!!rec} icon={<Download className="h-4 w-4" />} onClick={() => setVidOpts((v) => !v)}>Download video</Button>
+            <Button size="sm" tone="ghost" disabled={!!rec} icon={<Download className="h-4 w-4" />} onClick={() => setVidOpts((v) => !v)}><span className="hidden sm:inline">Download video</span><span className="sm:hidden">Video</span></Button>
             {vidOpts && !rec && (
-              <div className="absolute right-0 top-11 z-10 w-[300px] rounded-2xl border border-white/10 bg-[#17171c] p-4 text-[13px] text-white/85 shadow-2xl">
+              <div className="absolute right-0 top-11 z-10 w-[min(300px,calc(100vw-24px))] rounded-2xl border border-white/10 bg-[#17171c] p-4 text-[13px] text-white/85 shadow-2xl">
                 <div className="font-semibold text-white">Save this preview as a video</div>
                 <p className="text-white/55 text-[12.5px] mt-1">It plays through once in real time while recording ({fmtDur(total)}). Keep this tab open until it finishes.</p>
                 <label className="flex items-center gap-2 mt-3"><input type="checkbox" checked={titles} onChange={(e) => setTitles(e.target.checked)} /> Shot titles and descriptions</label>
@@ -120,7 +120,7 @@ export function PreviewOverlay() {
           </div>
         </div>
       )}
-      <div className="flex-1 min-h-0 grid place-items-center px-10">
+      <div className="flex-1 min-h-0 grid place-items-center px-2 md:px-10">
         <div className="relative overflow-hidden bg-[#0b0b0e] rounded-md shadow-2xl" style={{ aspectRatio: String(aspectRatio(p.aspect)), height: "min(100%, calc((100vw - 80px) / " + aspectRatio(p.aspect) + "))" }}>
           {start ? (
             <motion.div key={shot.id} className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
@@ -130,10 +130,10 @@ export function PreviewOverlay() {
           ) : (
             <div className="absolute inset-0 grid place-items-center text-white/40 text-sm">No image for this shot yet</div>
           )}
-          <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/85 to-transparent">
+          <div className="absolute inset-x-0 bottom-0 p-3 md:p-6 bg-gradient-to-t from-black/85 to-transparent">
             <div className="text-[12px] font-semibold tracking-[.18em] text-amber">SHOT {pad(i + 1)} · {shot.framing.toUpperCase()} · {shot.movement.toUpperCase()}</div>
-            <div className="text-white text-[20px] font-semibold mt-1">{shot.title}</div>
-            <div className="text-white/70 text-[14px] mt-1 max-w-3xl">{shot.description}</div>
+            <div className="text-white text-[16px] md:text-[20px] font-semibold mt-1">{shot.title}</div>
+            <div className="text-white/70 text-[12.5px] md:text-[14px] mt-1 max-w-3xl line-clamp-2 md:line-clamp-none">{shot.description}</div>
           </div>
         </div>
       </div>
@@ -151,7 +151,7 @@ export function PreviewOverlay() {
           <IconButton label="Next shot" onClick={() => { setI(Math.min(p.shots.length - 1, i + 1)); setEl(0); }}><ChevronRight className="h-5 w-5" /></IconButton>
           <span className="text-[13px] tabular-nums ml-2">{fmtDur(before + el)} / {fmtDur(total)}</span>
           <span className="flex-1" />
-          <span className="text-[12px] text-white/40">Space play/pause · ← → shots · Esc close</span>
+          <span className="hidden md:inline text-[12px] text-white/40">Space play/pause · ← → shots · Esc close</span>
         </div>
       </div>
     </div>

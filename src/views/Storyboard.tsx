@@ -6,7 +6,7 @@ import { AlertTriangle, CheckCircle2, Clapperboard, Clock, Copy, Film, GripVerti
 import { useEffect, useRef, useState } from "react";
 import { FrameJobBar, MakeFramesButton } from "../components/FrameMaker";
 import ShotInspector, { ContinuityDot, StatusPill } from "../components/ShotInspector";
-import { askText, AssetImg, Button, confirmDialog, cx, DropSlot, IconButton, Menu, Pill, Progress, Segmented } from "../components/ui";
+import { askText, AssetImg, Button, confirmDialog, cx, DropSlot, IconButton, Menu, Pill, Progress, Segmented, useMobile, useMobileSheet, MobileSheet, isMobileNow } from "../components/ui";
 import { continuityStatus, projectIssues, projectReadiness, readiness, STATUS_LABEL, totalDuration } from "../lib/checks";
 import { fmtDur, fmtLong, pad } from "../lib/ids";
 import { aspectRatio } from "../lib/options";
@@ -39,7 +39,7 @@ function ShotCard({ p, s, i, selected, overlay }: { p: Project; s: Shot; i: numb
   const style = { transform: CSS.Transform.toString(transform), transition };
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners} role="button" tabIndex={0} aria-label={`Shot ${i + 1}: ${s.title}`} aria-pressed={selected}
-      onClick={() => st.setUI({ selectedShotId: s.id })}
+      onClick={() => { st.setUI({ selectedShotId: s.id }); if (isMobileNow()) useMobileSheet.setState({ open: true }); }}
       onDoubleClick={() => { st.setUI({ selectedShotId: s.id }); st.go("shot"); }}
       onKeyDown={(e) => { if (e.key === "Enter" && e.target === e.currentTarget) { e.preventDefault(); st.setUI({ selectedShotId: s.id }); st.go("shot"); } }}
       onFocus={(e) => { if (e.target === e.currentTarget) st.setUI({ selectedShotId: s.id }); }}
@@ -100,7 +100,7 @@ function TimelineBlock({ p, s, i, selected, pxs }: { p: Project; s: Shot; i: num
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, width: w }} className={cx("relative shrink-0 h-full", isDragging && "opacity-40 z-10")}>
       <div {...attributes} {...listeners} role="button" tabIndex={0} aria-label={`Shot ${i + 1}: ${s.title}, ${s.duration} seconds`}
-        onClick={() => st.setUI({ selectedShotId: s.id })} onDoubleClick={() => st.go("shot")}
+        onClick={() => { st.setUI({ selectedShotId: s.id }); if (isMobileNow()) useMobileSheet.setState({ open: true }); }} onDoubleClick={() => st.go("shot")}
         className={cx("h-full rounded-xl border overflow-hidden bg-surface flex flex-col cursor-grab outline-none focus-visible:ring-2 focus-visible:ring-amber/60", selected ? "border-amber ring-1 ring-amber" : "border-line hover:border-[#4a4e5d]")}>
         <AssetImg id={s.imageId} assets={p.assets} className="flex-1 min-h-0" rounded="rounded-none" label={false}>
           {!s.imageId && <div className="absolute inset-0 grid place-items-center text-faint"><ImagePlus className="h-5 w-5" /></div>}
@@ -128,6 +128,7 @@ function TimelineBlock({ p, s, i, selected, pxs }: { p: Project; s: Shot; i: num
 export default function Storyboard() {
   const p = useStore((s) => s.project)!;
   const inspector = useStore((s) => s.prefs.inspector);
+  const mobile = useMobile(); const sheet = useMobileSheet((m) => m.open);
   const st = useStore.getState();
   const sel = p.ui.selectedShotId;
   const selShot = p.shots.find((s) => s.id === sel) ?? null;
@@ -181,18 +182,18 @@ export default function Storyboard() {
   return (
     <div className="flex h-full min-h-0">
       <div className="flex-1 min-w-0 overflow-y-auto thin-scroll" onClick={(e) => { if (e.target === e.currentTarget) st.setUI({ selectedShotId: null }); }}>
-        <div className="max-w-[1500px] mx-auto px-8 py-7">
+        <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-5 md:py-7">
           {/* header */}
-          <div className="flex gap-6 items-stretch">
+          <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 items-stretch">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap whitespace-nowrap text-[11.5px] font-semibold uppercase tracking-[.14em] text-faint">
                 <span>{p.genre}</span><span>·</span><span>{p.filmStyle}</span><span>·</span><span>{p.aspect}</span>
                 {p.isSample && <Pill tone="ai" className="ml-1 normal-case tracking-normal">Sample project</Pill>}
               </div>
-              <h1 className="mt-2"><button title="Rename film" onClick={async () => { const t = await askText({ title: "Rename film", value: p.title }); if (t != null) st.renameProject(p.id, t); }} className="font-serif text-[46px] leading-[1.02] text-left hover:text-amber/95 transition-colors">{p.title}</button></h1>
+              <h1 className="mt-2"><button title="Rename film" onClick={async () => { const t = await askText({ title: "Rename film", value: p.title }); if (t != null) st.renameProject(p.id, t); }} className="font-serif text-[34px] md:text-[34px] md:text-[46px] leading-[1.02] text-left hover:text-amber/95 transition-colors">{p.title}</button></h1>
               <p className="text-[14.5px] text-mute mt-2 max-w-3xl leading-relaxed line-clamp-2">{p.concept || <button className="text-amber" onClick={() => st.go("story")}>Add a concept in Story →</button>}</p>
             </div>
-            <div className="w-[300px] shrink-0 rounded-2xl bg-surface border border-line p-4 flex flex-col justify-between">
+            <div className="w-full lg:w-[300px] shrink-0 rounded-2xl bg-surface border border-line p-4 flex flex-col justify-between">
               <div className="grid grid-cols-3 gap-2 text-center">
                 <Stat v={String(p.scenes.length)} l={p.scenes.length === 1 ? "scene" : "scenes"} />
                 <Stat v={String(p.shots.length)} l="shots" />
@@ -212,10 +213,10 @@ export default function Storyboard() {
           </div>
 
           {/* toolbar */}
-          <div className="flex items-center gap-3 mt-8 mb-5">
+          <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-6 md:mt-8 mb-5">
             <h2 className="text-[17px] font-semibold">Storyboard</h2>
             <span className="text-sm text-faint">{p.shots.length} shots · {fmtLong(dur)}</span>
-            <span className="flex-1" />
+            <span className="flex-1 basis-full md:basis-auto h-0" />
             <Segmented value={p.ui.boardMode} onChange={(v) => st.setUI({ boardMode: v })} options={[{ value: "storyboard", label: <><LayoutGrid className="h-4 w-4" />Storyboard</> }, { value: "timeline", label: <><Rows3 className="h-4 w-4" />Timeline</> }]} />
             <MakeFramesButton p={p} />
             <Button tone="primary" icon={<Plus className="h-4 w-4" />} onClick={() => addShot(sel)} title="Add shot (N)">Add shot</Button>
@@ -277,12 +278,17 @@ export default function Storyboard() {
           <div className="h-12" />
         </div>
       </div>
-      {selShot && inspector && (
+      {selShot && mobile && sheet && (
+        <MobileSheet onClose={() => useMobileSheet.setState({ open: false })}>
+          <ShotInspector key={selShot.id} shot={selShot} onClose={() => useMobileSheet.setState({ open: false })} />
+        </MobileSheet>
+      )}
+      {selShot && !mobile && inspector && (
         <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.18 }} className="flex min-h-0">
           <ShotInspector key={selShot.id} shot={selShot} onClose={() => st.setPrefs({ inspector: false })} />
         </motion.div>
       )}
-      {selShot && !inspector && (
+      {selShot && !mobile && !inspector && (
         <button onClick={() => st.setPrefs({ inspector: true })} className="w-10 shrink-0 border-l border-line text-faint hover:text-ink hover:bg-white/[.03] text-[12px] [writing-mode:vertical-rl] tracking-wider" title="Show inspector ( ] )">SHOT INSPECTOR</button>
       )}
     </div>

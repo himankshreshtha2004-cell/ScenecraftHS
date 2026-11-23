@@ -1,8 +1,8 @@
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { useEffect } from "react";
 import { PreviewOverlay, SettingsOverlay, ShortcutsOverlay } from "./components/Overlays";
-import { Logo, Sidebar, Toasts, TopBar } from "./components/Shell";
-import { AskHost, ConfirmHost } from "./components/ui";
+import { Logo, MobileNav, Sidebar, Toasts, TopBar } from "./components/Shell";
+import { AskHost, ConfirmHost, useMobileSheet } from "./components/ui";
 import type { View } from "./lib/types";
 import { useStore } from "./store/store";
 import { Characters, Locations } from "./views/Cast";
@@ -26,17 +26,20 @@ function Workspace() {
   const body = needs && !p ? <Projects /> : view === "studio" ? <Studio /> : view === "projects" ? <Projects /> : view === "story" ? <Story /> : view === "script" ? <Script /> : view === "generate" ? <Generate /> : view === "storyboard" ? <Storyboard />
     : view === "shot" ? <ShotEditor /> : view === "characters" ? <Characters /> : view === "locations" ? <Locations /> : view === "prompts" ? <PromptStudio /> : view === "credits" ? <Credits /> : <Export />;
   const scrolls = view === "studio" || view === "projects";
+  // a phone's shot-details sheet closes when moving to another screen
+  useEffect(() => { useMobileSheet.setState({ open: false }); }, [view]);
   return (
     <div className="h-full flex flex-col">
       <TopBar />
       <div className="flex-1 flex min-h-0">
         <Sidebar />
-        <main className={scrolls ? "flex-1 min-w-0 overflow-y-auto thin-scroll" : "flex-1 min-w-0 min-h-0"}>
+        <main className={(scrolls ? "flex-1 min-w-0 overflow-y-auto thin-scroll" : "flex-1 min-w-0 min-h-0") + " pb-[calc(56px+env(safe-area-inset-bottom))] md:pb-0"}>
           <AnimatePresence mode="wait">
             <motion.div key={view + (p?.id ?? "")} className="h-full" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.14 }}>{body}</motion.div>
           </AnimatePresence>
         </main>
       </div>
+      <MobileNav />
     </div>
   );
 }

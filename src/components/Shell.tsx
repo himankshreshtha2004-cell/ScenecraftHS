@@ -37,14 +37,14 @@ export function TopBar() {
   const past = useStore((s) => s.past.length), future = useStore((s) => s.future.length);
   const inProject = !!p && view !== "studio" && view !== "projects";
   return (
-    <header className="h-14 shrink-0 flex items-center gap-3 px-4 border-b border-line bg-bg/95 backdrop-blur z-30">
-      <button onClick={() => st.go("studio")} className="rounded-lg px-1 py-1 hover:bg-white/[.04]" aria-label="SceneCraft — My Studio"><Logo size={28} /></button>
-      <div className="h-6 w-px bg-line mx-1" />
+    <header className="h-14 shrink-0 flex items-center gap-1.5 md:gap-3 px-2.5 md:px-4 border-b border-line bg-bg/95 backdrop-blur z-30">
+      <button onClick={() => st.go("studio")} className="rounded-lg px-1 py-1 hover:bg-white/[.04]" aria-label="SceneCraft — My Studio"><span className="hidden md:inline"><Logo size={28} /></span><span className="md:hidden"><Logo size={28} withText={false} /></span></button>
+      <div className="h-6 w-px bg-line mx-1 hidden md:block" />
       {inProject && p ? (
         <Menu align="left" trigger={(open, toggle) => (
           <button onClick={toggle} aria-expanded={open} className="flex items-center gap-2 h-9 pl-2.5 pr-2 rounded-lg hover:bg-white/[.05] min-w-0">
-            <span className="font-serif text-[22px] leading-none truncate max-w-[300px]">{p.title}</span>
-            {p.isSample && <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ai bg-ai-soft rounded px-1.5 py-0.5">Sample</span>}
+            <span className="font-serif text-[19px] md:text-[22px] leading-none truncate max-w-[34vw] md:max-w-[300px]">{p.title}</span>
+            {p.isSample && <span className="hidden sm:inline text-[10.5px] font-semibold uppercase tracking-wider text-ai bg-ai-soft rounded px-1.5 py-0.5">Sample</span>}
             <ChevronDown className="h-4 w-4 text-faint" />
           </button>
         )} items={[
@@ -59,23 +59,23 @@ export function TopBar() {
       <div className="flex-1" />
       {inProject && (
         <>
-          <SaveStatus />
-          <div className="h-6 w-px bg-line mx-1" />
-          <IconButton label="Undo (Ctrl+Z)" disabled={!past} onClick={st.undo}><Undo2 className="h-[18px] w-[18px]" /></IconButton>
-          <IconButton label="Redo (Ctrl+Shift+Z)" disabled={!future} onClick={st.redo}><Redo2 className="h-[18px] w-[18px]" /></IconButton>
-          <div className="h-6 w-px bg-line mx-1" />
-          <button onClick={() => st.setOverlay("preview")} className="inline-flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-medium text-ink/90 hover:bg-white/[.06]" title="Play the storyboard as an animatic (P)">
-            <Play className="h-4 w-4" />Preview
+          <span className="hidden lg:inline-flex"><SaveStatus /></span>
+          <div className="h-6 w-px bg-line mx-1 hidden md:block" />
+          <span className="hidden md:inline-flex"><IconButton label="Undo (Ctrl+Z)" disabled={!past} onClick={st.undo}><Undo2 className="h-[18px] w-[18px]" /></IconButton></span>
+          <span className="hidden md:inline-flex"><IconButton label="Redo (Ctrl+Shift+Z)" disabled={!future} onClick={st.redo}><Redo2 className="h-[18px] w-[18px]" /></IconButton></span>
+          <div className="h-6 w-px bg-line mx-1 hidden md:block" />
+          <button onClick={() => st.setOverlay("preview")} className="inline-flex items-center gap-2 h-9 px-2.5 md:px-3 rounded-lg text-sm font-medium text-ink/90 hover:bg-white/[.06]" title="Play the storyboard as an animatic (P)" aria-label="Preview">
+            <Play className="h-4 w-4" /><span className="hidden sm:inline">Preview</span>
           </button>
-          <button onClick={() => st.go("export")} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold bg-amber text-[#1b1208] hover:bg-[#f0bd8c]">
-            <Download className="h-4 w-4" />Export
+          <button onClick={() => st.go("export")} className="inline-flex items-center gap-2 h-9 px-2.5 md:px-4 rounded-lg text-sm font-semibold bg-amber text-[#1b1208] hover:bg-[#f0bd8c]" aria-label="Export">
+            <Download className="h-4 w-4" /><span className="hidden sm:inline">Export</span>
           </button>
         </>
       )}
       {!inProject && (
-        <button onClick={() => st.setScreen("new")} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold bg-amber text-[#1b1208] hover:bg-[#f0bd8c]"><Plus className="h-4 w-4" />New film</button>
+        <button onClick={() => st.setScreen("new")} className="inline-flex items-center gap-2 h-9 px-3 md:px-4 rounded-lg text-sm font-semibold bg-amber text-[#1b1208] hover:bg-[#f0bd8c]"><Plus className="h-4 w-4" />New film</button>
       )}
-      <IconButton label="Keyboard shortcuts (?)" onClick={() => st.setOverlay("shortcuts")}><Keyboard className="h-[18px] w-[18px]" /></IconButton>
+      <span className="hidden md:inline-flex"><IconButton label="Keyboard shortcuts (?)" onClick={() => st.setOverlay("shortcuts")}><Keyboard className="h-[18px] w-[18px]" /></IconButton></span>
       <IconButton label="Settings" onClick={() => st.setOverlay("settings")}><Settings className="h-[18px] w-[18px]" /></IconButton>
     </header>
   );
@@ -111,7 +111,7 @@ export function Sidebar() {
   const cs = continuityStatus(issues);
   const active = view === "shot" ? "storyboard" : view;
   return (
-    <nav aria-label="Main" className={cx("shrink-0 border-r border-line bg-bg flex flex-col transition-[width] duration-200", open ? "w-[216px]" : "w-[64px]")}>
+    <nav aria-label="Main" className={cx("shrink-0 border-r border-line bg-bg hidden md:flex flex-col transition-[width] duration-200", open ? "w-[216px]" : "w-[64px]")}>
       <div className="flex-1 overflow-y-auto thin-scroll py-3 px-2.5 space-y-0.5">
         {NAV.map((n, i) => {
           const disabled = n.project && !p;
@@ -154,14 +154,56 @@ export function Sidebar() {
   );
 }
 
+/** phones: a bottom bar with the main places in a film, plus "More" for the rest */
+export function MobileNav() {
+  const view = useStore((s) => s.view), p = useStore((s) => s.project);
+  const [more, setMore] = useState(false);
+  const st = useStore.getState();
+  const active = view === "shot" ? "storyboard" : view;
+  const main: View[] = p ? ["storyboard", "characters", "locations", "prompts"] : ["studio", "projects"];
+  const go = (v: View) => { setMore(false); st.go(v); };
+  return (
+    <>
+      <nav aria-label="Main" className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-line bg-bg/95 backdrop-blur flex" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+        {main.map((v) => { const n = NAV.find((x) => x.v === v)!; const Icon = n.icon; const on = active === v && !more;
+          return (
+            <button key={v} onClick={() => go(v)} aria-current={on ? "page" : undefined} className={cx("flex-1 h-14 flex flex-col items-center justify-center gap-1 text-[10.5px] font-medium", on ? "text-amber" : "text-mute")}>
+              <Icon className="h-5 w-5" /><span className="truncate max-w-full px-1">{n.label.replace("Prompt Studio", "Prompts")}</span>
+            </button>
+          ); })}
+        <button onClick={() => setMore((m) => !m)} aria-expanded={more} className={cx("flex-1 h-14 flex flex-col items-center justify-center gap-1 text-[10.5px] font-medium", more || !main.includes(active as View) ? "text-amber" : "text-mute")}>
+          <span className="grid grid-cols-2 gap-[3px]"><span className="h-2 w-2 rounded-[2px] bg-current" /><span className="h-2 w-2 rounded-[2px] bg-current" /><span className="h-2 w-2 rounded-[2px] bg-current" /><span className="h-2 w-2 rounded-[2px] bg-current" /></span>More
+        </button>
+      </nav>
+      <AnimatePresence>
+        {more && (
+          <motion.div className="md:hidden fixed inset-0 z-[39] bg-black/50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMore(false)}>
+            <motion.div className="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-line bg-panel p-3 pb-20" initial={{ y: 40 }} animate={{ y: 0 }} exit={{ y: 40 }} onClick={(e) => e.stopPropagation()}>
+              {p && <div className="px-2 pt-1 pb-2 text-[11px] font-semibold uppercase tracking-[.14em] text-faint truncate">{p.title}</div>}
+              <div className="grid grid-cols-3 gap-2">
+                {NAV.filter((n) => !n.project || p).map((n) => { const Icon = n.icon; const on = active === n.v;
+                  return (
+                    <button key={n.v} onClick={() => go(n.v)} className={cx("rounded-2xl border p-3 flex flex-col items-center gap-1.5 text-[12px] font-medium", on ? "border-amber text-amber bg-white/[.04]" : "border-line text-ink/85")}>
+                      <Icon className="h-5 w-5" />{n.label}
+                    </button>
+                  ); })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
 export function Toasts() {
   const toasts = useStore((s) => s.toasts);
   return (
-    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[90] flex flex-col items-center gap-2 pointer-events-none" aria-live="polite">
+    <div className="fixed bottom-20 md:bottom-5 left-1/2 -translate-x-1/2 z-[90] flex flex-col items-center gap-2 pointer-events-none w-[calc(100%-24px)] md:w-auto" aria-live="polite">
       <AnimatePresence>
         {toasts.map((t) => (
           <motion.div key={t.id} layout initial={{ opacity: 0, y: 12, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 6 }} transition={{ duration: 0.18 }}
-            className={cx("pointer-events-auto flex items-center gap-3 rounded-xl border px-4 py-2.5 text-sm shadow-pop max-w-[560px]",
+            className={cx("pointer-events-auto flex items-center gap-3 rounded-xl border px-4 py-2.5 text-sm shadow-pop max-w-full md:max-w-[560px]",
               t.tone === "error" ? "bg-[#2a1716] border-bad/40 text-[#ffd9d6]" : "bg-panel border-line text-ink")}>
             {t.tone === "error" ? <AlertTriangle className="h-4 w-4 text-bad shrink-0" /> : t.tone === "ok" ? <span className="grid place-items-center h-5 w-5 rounded-full bg-ok/20"><Check className="h-3.5 w-3.5 text-ok" /></span> : <Sparkles className="h-4 w-4 text-ai shrink-0" />}
             <span className="leading-snug">{t.text}</span>

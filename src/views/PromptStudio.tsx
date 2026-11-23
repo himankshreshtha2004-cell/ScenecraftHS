@@ -23,7 +23,7 @@ export default function PromptStudio() {
 
   return (
     <div className="h-full overflow-y-auto thin-scroll">
-      <div className="max-w-[1240px] mx-auto px-8 py-7">
+      <div className="max-w-[1240px] mx-auto px-4 md:px-8 py-7">
         <SectionTitle eyebrow="Prompt Studio" title="Prompts & continuity" sub="Every shot's video prompt in one place, and a continuity check that compares each shot's settings against your locked characters, locations, outfits and style."
           right={<>
             <Button icon={<Copy className="h-4 w-4" />} onClick={async () => { await copyText(allText); st.toast(`Copied ${p.shots.length} prompts.`, "ok"); }}>Copy all prompts</Button>
@@ -45,11 +45,11 @@ export default function PromptStudio() {
                 className={cx("flex-1 h-9 rounded-lg text-[12px] font-semibold tabular-nums border transition-colors", c === "ready" ? "bg-ok-soft border-ok/30 text-ok" : c === "review" ? "bg-warn-soft border-warn/30 text-warn" : "bg-bad-soft border-bad/30 text-bad")}>{pad(i + 1)}</button>;
             })}
           </div>
-          <div className="flex items-center gap-3 mt-5">
+          <div className="flex flex-wrap items-center gap-3 mt-5">
             <Segmented size="sm" value={filter} onChange={setFilter} options={[{ value: "open", label: `Open (${open.length})` }, { value: "kept", label: `Kept as intentional (${all.length - open.length})` }, { value: "all", label: "All" }]} />
             <span className="text-[12px] text-faint">Rules check the structured data only — no image analysis is performed.</span>
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
             {shown.map((i) => <IssueRow key={i.id + i.shotId} i={i} />)}
             {!shown.length && <p className="col-span-2 text-sm text-mute flex items-center gap-2 py-4"><CheckCircle2 className="h-4 w-4 text-ok" />{filter === "open" ? "No open continuity issues." : "Nothing here."}</p>}
           </div>
@@ -74,7 +74,7 @@ export default function PromptStudio() {
                     <span className={cx("text-[12px] font-semibold", r.ready ? "text-ok" : "text-mute")}>{r.ready ? "Ready" : `${r.checks.filter((c) => c.ok && !c.na).length}/${r.checks.filter((c) => !c.na).length} planned`}</span>
                   </div>
                   <p className="text-[13.5px] text-mute leading-relaxed mt-2 line-clamp-3">{text}</p>
-                  <div className="flex gap-2 mt-3">
+                  <div className="flex flex-wrap gap-2 mt-3">
                     <Button size="sm" icon={<Copy className="h-4 w-4" />} onClick={async () => { await copyText(text); st.toast(`Shot ${pad(i + 1)} prompt copied.`, "ok"); }}>Copy</Button>
                     <Button size="sm" tone="ghost" icon={<Pencil className="h-4 w-4" />} onClick={() => { st.setUI({ selectedShotId: s.id }); useEditorTab.setState({ tab: "prompt" }); st.go("shot"); }}>Edit prompt</Button>
                   </div>

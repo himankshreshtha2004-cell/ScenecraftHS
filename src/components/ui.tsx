@@ -355,11 +355,11 @@ export function Card({ children, className, ...rest }: React.HTMLAttributes<HTML
 
 export function SectionTitle({ eyebrow, title, sub, right, serif }: { eyebrow?: string; title: React.ReactNode; sub?: React.ReactNode; right?: React.ReactNode; serif?: boolean }) {
   return (
-    <div className="flex items-end justify-between gap-6 flex-wrap">
+    <div className="flex items-end justify-between gap-4 md:gap-6 flex-wrap">
       <div className="min-w-0">
         {eyebrow && <div className="text-[11.5px] font-semibold uppercase tracking-[.14em] text-faint mb-1.5">{eyebrow}</div>}
-        <h1 className={cx(serif ? "font-serif text-[44px] leading-[1.02] tracking-[-.01em]" : "text-[26px] font-semibold tracking-[-.02em]")}>{title}</h1>
-        {sub && <p className="text-[14.5px] text-mute mt-2 max-w-2xl leading-relaxed">{sub}</p>}
+        <h1 className={cx(serif ? "font-serif text-[32px] md:text-[44px] leading-[1.02] tracking-[-.01em]" : "text-[22px] md:text-[26px] font-semibold tracking-[-.02em]")}>{title}</h1>
+        {sub && <p className="text-[13.5px] md:text-[14.5px] text-mute mt-2 max-w-2xl leading-relaxed">{sub}</p>}
       </div>
       {right && <div className="flex items-center gap-2 flex-wrap">{right}</div>}
     </div>
@@ -372,5 +372,25 @@ export function Progress({ value, tone = "amber", className }: { value: number; 
     <div className={cx("h-1.5 rounded-full bg-white/[.07] overflow-hidden", className)} role="progressbar" aria-valuenow={Math.round(value * 100)} aria-valuemin={0} aria-valuemax={100}>
       <div className={cx("h-full rounded-full transition-[width] duration-500", c)} style={{ width: `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%` }} />
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ phones */
+const MQ = "(max-width: 767px)";
+/** true on phone-sized screens (under 768 px wide) */
+export function useMobile() {
+  const [m, setM] = useState(() => typeof window !== "undefined" && window.matchMedia(MQ).matches);
+  useEffect(() => { const mq = window.matchMedia(MQ); const f = () => setM(mq.matches); mq.addEventListener("change", f); return () => mq.removeEventListener("change", f); }, []);
+  return m;
+}
+export const isMobileNow = () => typeof window !== "undefined" && window.matchMedia(MQ).matches;
+/** on phones the shot details open as a full-screen sheet only after the person taps a shot */
+export const useMobileSheet = create<{ open: boolean }>(() => ({ open: false }));
+export function MobileSheet({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); }; window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, [onClose]);
+  return (
+    <motion.div className="fixed inset-0 z-[70] bg-bg flex flex-col" initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.2 }} role="dialog" aria-modal="true">
+      {children}
+    </motion.div>
   );
 }
